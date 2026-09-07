@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d1117">
+<title>MesHeures</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon.svg">
+<link rel="stylesheet" href="./style/style.css">
+<script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script defer src="./scripts/app.js"></script>
+</head>
+<body>
+<header>
+<h1>🚑 MesHeures <span id="hBadge" style="display:none" class="badge">!</span></h1>
+<div class="tabs">
+<button id="t-jour" class="on" onclick="tab('jour')">Jour</button>
+<button id="t-mois" onclick="tab('mois')">Mois</button>
+<button id="t-paie" onclick="tab('paie')">Paie</button>
+<button id="t-audit" onclick="tab('audit')">Audit</button>
+<button id="t-bul" onclick="tab('bul')">Bulletin</button>
+<button id="t-romi" onclick="tab('romi')">ROMI1</button>
+<button id="t-reg" onclick="tab('reg')">Réglages</button>
+</div>
+</header>
+<main>
+
+<section id="s-jour" class="on">
+<div class="nav">
+<button class="g" onclick="goDay(-1)">‹</button>
+<div class="lbl" id="dLbl"></div>
+<button class="g" onclick="goDay(1)">›</button>
+</div>
+<div class="card">
+<div class="chips" id="dType"></div>
+<div id="dWork"></div>
+<div style="margin-top:9px"><label>Note</label>
+<input id="dNote" maxlength="120" onchange="setD('note',this.value)" placeholder="Remarque, incident…"></div>
+</div>
+<div class="card"><h2>Résumé du jour</h2><div class="kpis" id="dKpi"></div><div id="dAl" style="margin-top:10px"></div></div>
+<div class="card"><h2>Quatorzaine en cours</h2><div id="dQuat"></div></div>
+<div class="card"><h2>Projection fin de période <span class="sub" id="dProjLbl"></span></h2><div id="dProj"></div></div>
+<div class="fab">
+<button class="g" onclick="goToday()">📅 Aujourd'hui</button>
+<button class="g" onclick="dupliConfirm()">📋 Copier veille</button>
+<button class="g" onclick="window.print()">🖨️ Imprimer</button>
+</div>
+</section>
+
+<section id="s-mois">
+<div class="nav">
+<button class="g" onclick="goMonth(-1)">‹</button>
+<div class="lbl" id="mLbl"></div>
+<button class="g" onclick="goMonth(1)">›</button>
+</div>
+<div class="card"><div class="cal" id="mCal"></div>
+<div class="mut" style="margin-top:9px">Touche un jour pour le modifier colonne Σ amplitude TTE</div></div>
+<div class="card"><h2>Total du mois</h2><div class="kpis" id="mKpi"></div></div>
+<div class="card"><h2>Graphique TTE journalier</h2><div class="chart" id="mChart"></div></div>
+<div class="card"><h2>Dimanches & fériés travaillés</h2><div id="mDim"></div></div>
+</section>
+
+<section id="s-paie">
+<div class="nav">
+<button class="g" onclick="goPer(-1)">‹</button>
+<div class="lbl" id="pLbl"></div>
+<button class="g" onclick="goPer(1)">›</button>
+</div>
+<div class="card">
+<div class="g2">
+<div><label>Début de période</label><input type="date" id="pS" onchange="DB.per.start=this.value;save();renderPay()"></div>
+<div><label>Nb de quatorzaines</label><input type="number" min="1" max="6" id="pN" onchange="DB.per.nb=+this.value;save();renderPay()"></div>
+</div>
+<div style="margin-top:9px" id="pAlign"></div>
+<button onclick="regPer()" style="margin-top:6px;width:100%">📌 Enregistrer dans audit</button>
+</div>
+<div class="card"><h2>KPIs</h2><div class="kpis" id="pKpi"></div></div>
+<div class="card"><h2>Détail quatorzaines</h2><div style="overflow-x:auto"><table id="pTab"></table></div></div>
+<div class="card"><h2>Anomalies <span class="sub" id="pAlCount"></span></h2><div id="pAl"></div></div>
+<div class="card"><h2>Brut estimé</h2><div style="overflow-x:auto"><table id="pBrut"></table></div>
+<div class="g2" style="margin-top:9px">
+<button class="g" onclick="copySum()">📋 Copier résumé</button>
+<button class="g" onclick="window.print()">🖨️ Imprimer</button>
+</div></div>
+<div class="card"><h2>Repos compensateur</h2>
+<div class="g2">
+<div><label>HS 25 % payées (h)</label><input type="number" step="0.01" id="pP25" onchange="setBul('p25',+this.value)"></div>
+<div><label>HS 50 % payées (h)</label><input type="number" step="0.01" id="pP50" onchange="setBul('p50',+this.value)"></div>
+</div>
+<div class="g2" style="margin-top:9px">
+<div><label>RC antérieur (h)</label><input type="number" step="0.01" id="pRC" onchange="setBul('rcOld',+this.value)"></div>
+<div><label>RC bulletin (h)</label><input type="number" step="0.01" id="pRCA" onchange="setBul('rcAcq',+this.value)"></div>
+</div>
+<div id="pRcOut" style="margin-top:9px"></div></div>
+<div class="card"><h2>Comparaison TTE bulletin</h2><div style="overflow-x:auto"><table id="pCmp"></table></div></div>
+</section>
+
+<section id="s-audit">
+<div class="card"><h2>Vue globale</h2><div class="kpis" id="aKpi"></div></div>
+<div class="card"><h2>Résumé annuel</h2><div style="overflow-x:auto"><table id="aAnn"></table></div></div>
+<div class="card"><h2>Périodes enregistrées</h2><div style="overflow-x:auto"><table id="aTab"></table></div></div>
+<div class="card"><h2>Dimanches & fériés travaillés</h2><div id="aFer"></div></div>
+<div class="card"><h2>Solde RC cumulé</h2><div id="aRc"></div></div>
+<div class="card"><h2>Anomalies critiques</h2><div id="aAl"></div></div>
+</section>
+
+<section id="s-bul">
+<div class="card">
+<h2>📄 Importer un bulletin de paie employeur</h2>
+<div class="al i" style="margin-bottom:10px">Importe ton bulletin PDF reçu de employeur Le programme détecte automatiquement les écarts avec ses propres calculs</div>
+<div style="margin-bottom:9px"><label>Fichier PDF bulletin de paie</label>
+<input type="file" accept=".pdf,application/pdf" id="fbul" onchange="parseBulFile(this.files[0])"></div>
+<label>ou coller le texte extrait ici</label>
+<textarea id="bulTxt" rows="5" placeholder="Colle le texte copié depuis le bulletin PDF"></textarea>
+<button onclick="parseBulletin()" style="margin-top:7px;width:100%">🔍 Analyser le bulletin</button>
+<div id="bulOut" style="margin-top:9px"></div>
+</div>
+<div class="card" id="bulResultCard" style="display:none">
+<h2>Résultat de analyse <span class="sub" id="bulMois"></span></h2>
+<div class="kpis" id="bulKpi"></div>
+<div style="margin-top:10px;overflow-x:auto"><table id="bulTab"></table></div>
+<div id="bulAl" style="margin-top:10px"></div>
+</div>
+<div class="card">
+<h2>Historique des bulletins importés</h2>
+<div id="bulHist"></div>
+</div>
+</section>
+
+<section id="s-romi">
+<div class="card">
+<h2>📋 ROMI1 <span class="sub">Récap Mensuel Salarié relevé officiel employeur</span></h2>
+<div class="al i" style="margin-bottom:10px">C est le document le plus fiable de employeur durée du travail RC ancienneté plus fiable que ton propre suivi
+Le ROMI1 reçu est un scan impression PDF sans texte à intérieur L appli le lit par reconnaissance de caractères OCR directement dans le téléphone puis pré remplit les champs ci dessous Vérifie toujours avant enregistrer L OCR peut se tromper sur un chiffre</div>
+<div style="margin-bottom:9px"><label>Photo ou PDF du ROMI1</label>
+<input type="file" accept=".pdf,application/pdf,image/*" id="fromi" onchange="parseRomiFile(this.files[0])"></div>
+<div id="romiOcrOut" style="margin-top:9px"></div>
+<details style="margin-top:9px"><summary class="mut" style="cursor:pointer">Texte brut lu par OCR vérification</summary>
+<textarea id="romiRawTxt" rows="6" readonly style="margin-top:7px"></textarea></details>
+<div class="g2" style="margin-top:9px">
+<div><label>Début de période</label><input type="date" id="rmStart"></div>
+<div><label>Fin de période</label><input type="date" id="rmEnd"></div>
+</div>
+<div class="grid" id="rmFields" style="margin-top:9px"></div>
+<button onclick="saveRomi()" style="margin-top:9px;width:100%">💾 Enregistrer ce relevé</button>
+<div id="romiOut" style="margin-top:9px"></div>
+</div>
+<div class="card" id="romiResultCard" style="display:none">
+<h2>Analyse <span class="sub" id="romiPerLbl"></span></h2>
+<div class="kpis" id="romiKpi"></div>
+<div id="romiAl" style="margin-top:10px"></div>
+</div>
+<div class="card"><h2>Historique des relevés ROMI1</h2><div id="romiHist"></div></div>
+</section>
+
+<section id="s-reg">
+<div class="card"><h2>Identité & contrat</h2>
+<div class="g2">
+<div><label>Prénom Nom</label><input id="rNom" placeholder="Mickael ROTH" onchange="DB.s.nom=this.value;save()"></div>
+<div><label>Date embauche</label><input type="date" id="rEmb" onchange="DB.s.emb=this.value;save();renderReg()"></div>
+</div>
+<div class="g2" style="margin-top:9px">
+<div><label>Ancienneté auto calc</label><div id="rAncCalc" class="al i" style="margin:0;font-size:12px"></div></div>
+<div><label>Ancienneté prime %</label><input type="number" step="0.01" id="rAnc" onchange="DB.s.anc=+this.value;save()"></div>
+</div>
+</div>
+<div class="card"><h2>Tarifs</h2><div class="grid" id="rg1"></div></div>
+<div class="card"><h2>Quatorzaines & durées</h2>
+<div class="grid" id="rg2"></div>
+<div style="margin-top:9px"><label style="text-transform:none;font-size:14px;color:var(--txt)"><input type="checkbox" id="rMin" onchange="DB.s.min=this.checked;save();renderAll()"> TTE minimale 4h30 si contrat</label></div>
+</div>
+<div class="card"><h2>Paniers & habillage</h2><div class="grid" id="rg3"></div></div>
+<div class="card"><h2>Import AmbuTrack PDF</h2>
+<div style="margin-bottom:8px"><label>Fichier PDF AmbuTrack</label>
+<input type="file" accept=".pdf,application/pdf" id="fpdf" onchange="parsePdfFile(this.files[0])"></div>
+<label>ou coller le texte ici</label>
+<textarea id="impTxt" rows="5" placeholder="Colle ici le texte copié depuis le PDF AmbuTrack"></textarea>
+<button onclick="parsePDF()" style="margin-top:7px;width:100%">Importer le texte</button>
+<div id="impOut" style="margin-top:9px"></div>
+</div>
+<div class="card"><h2>Import AmbuTrack Excel</h2>
+<input type="file" accept=".xlsx,.xls" id="fx" onchange="parseExcel(this.files[0])">
+</div>
+<div class="card"><h2>Sauvegarde JSON</h2>
+<div id="rBk" style="margin-bottom:9px"></div>
+<div class="row">
+<button class="g" onclick="expo()">⬇ Exporter</button>
+<button class="g" onclick="$('impJ').click()">⬆ Importer JSON</button>
+<input type="file" accept=".json" id="impJ" onchange="impo(this)" style="display:none">
+<button class="r" onclick="wipe()">🗑 Effacer tout</button>
+</div>
+</div>
+<div class="card"><h2>Archive PDF pré-chargée</h2>
+<div class="al i">📦 Mickael Roth Ambulance de uby<br>19 05 2025 06 09 2026 se charge automatiquement au 1er lancement</div>
+<button class="g" onclick="loadArchive()" style="margin-top:8px;width:100%">🔄 Recharger archive</button>
+</div>
+</section>
+</main>
+
+<div class="modal-bg" id="undoModal">
+<div class="modal">
+<h3>↩️ Annuler la dernière action </h3>
+<div id="undoDesc" style="margin-bottom:14px;color:var(--dim);font-size:13px"></div>
+<div class="row">
+<button onclick="doUndo()">Annuler action</button>
+<button class="g" onclick="closeModal('undoModal')">Garder</button>
+</div>
+</div>
+</div>
+</body>
+</html>
