@@ -15,7 +15,7 @@ function closeModal(id){$('undoModal').classList.remove('on')}
 
 function tab(t){
   curTab=t;
-  ['jour','mois','paie','audit','bul','romi','reg'].forEach(x=>{
+  ['home','jour','mois','paie','audit','bul','romi','reg'].forEach(x=>{
     $('s-'+x).classList.toggle('on',x===t);
     $('t-'+x).classList.toggle('on',x===t);
   });
@@ -36,6 +36,15 @@ function setD(f,v){
 function setP(i,f,v){const d=gd(curDate);if(!d.p[i])d.p[i]={ty:'ENT'};d.p[i][f]=v;save();renderDay()}
 
 function addP(){gd(curDate).p.push({d:'',f:'',ty:'ENT'});save();renderDay()}
+
+function clearDay(){
+  const d=DB.days[curDate];
+  if(!d || (d.t==='REPOS'&&!d.deb&&!d.fin&&!d.note&&!d.p?.length)) return;
+  if(!confirm('Effacer les données de cette journée ?')) return;
+  pushUndo('Effacement du '+short(curDate));
+  DB.days[curDate]={t:'REPOS',p:[]};
+  save();renderDay();
+}
 
 function delP(i){gd(curDate).p.splice(i,1);save();renderDay()}
 
@@ -96,7 +105,9 @@ function renderDay(){
 <input type="checkbox" ${d.fer?'checked':''} onchange="setD('fer',this.checked)"> ☀️ Jour férié travaillé (majoration 100 %)
 </label></div>`;
   }
-  $('dWork').innerHTML=h;
+  const stateLabel={T:'Journée travaillée',REPOS:'Repos',NUIT:'Nuit',RC:'Repos compensateur',CP:'Congé payé',MAL:'Maladie'}[d.t]||d.t;
+  const stateClass=d.t==='T'?'ok':d.t==='REPOS'?'mut':d.t==='NUIT'?'pur':'warn';
+  $('dWork').innerHTML=`<div class="day-state ${stateClass}"><span>${stateLabel}</span>${r.al.length?`<b>⚠️ ${r.al.length} alerte${r.al.length>1?'s':''}</b>`:''}</div>${h}`;
   $('dNote').value=d.note||'';
   $('dKpi').innerHTML=[
     ['Amplitude',F(r.amp)],['TTE',F(r.tte)],['Pauses',F(r.pz)],
@@ -370,6 +381,7 @@ function renderReg(){
 }
 
 function renderAll(){
+  renderHome();
   if(curTab==='jour')renderDay();
   if(curTab==='mois')renderMonth();
   if(curTab==='paie')renderPay();
@@ -395,4 +407,38 @@ function copySum(){
   });
   t+='TOTAL : TTE '+F(G.tte)+' · Amp '+F(G.amp)+' · '+G.trav+' j · '+(G.ir+G.iru)+' paniers · IDAJ '+C2(G.idaj)+'h';
   navigator.clipboard.writeText(t).then(()=>alert('✅ Résumé copié !'),()=>prompt('Copie :',t));
+}
+
+/* ═══════════════════════════════════════════════
+   V10 — TABLEAU DE BORD
+═══════════════════════════════════════════════ */
+function renderHome(){
+  const now=today();
+  const m=now.slice(0,7);
+  const yr=+m.slice(0,4),mo=+m.slice(5,7);
+  let month={amp:0,tte:0,trav:0,ir:0,iru:0,idaj:0};
+  const alerts=[];
+  let k=m+'-01';
+  const last=isoOf(new Date(yr,mo,0));
+  while(k<=last){
+    const r=cd(k);month.amp+=r.amp;month.tte+=r.tte;month.trav+=r.trav;month.ir+=r.ir;month.iru+=r.iru;month.idaj+=r.idaj;
+    r.al.forEach(a=>alerts.push({k,...a})); k=addD(k,1);
+  }
+  const diff=nDays(DB.s.anchor,now);
+  const qs=addD(DB.s.anchor,Math.floor(diff/14)*14);
+  const q=calcPer(qs,1).Q[0];
+  const N=DB.s.base*120;
+  const br=brutOf(calcPer(qs,1).G);
+  const pc=Math.min(100,q.seuil/N*100);
+  $('homeDate').textContent='Aujourd’hui · '+shortY(now)+' · '+dow(now).toUpperCase();
+  $('homeKpi').innerHTML=[
+    ['TTE mois',F(month.tte),'ok'],['Jours travaillés',month.trav,'ok'],
+    ['HS 25 %',F(q.h25),'warn'],['HS 50 %',F(q.h50),'bad'],
+    ['Paniers',month.ir+month.iru,''],['IDAJ',C2(month.idaj)+' h','']
+  ].map(x=>`<div class="home-kpi ${x[2]}"><b>${x[1]}</b><span>${x[0]}</span></div>`).join('');
+  $('homeQuat').innerHTML=`<div class="home-value">${F(q.seuil)}</div><div class="home-muted">${short(qs)} → ${short(addD(qs,13))}</div><div class="home-progress"><i style="width:${pc.toFixed(1)}%"></i></div><div class="home-muted">${q.seuil<N?'Marge avant HS : <b>'+F(N-q.seuil)+'</b>':'🔥 Seuil hebdomadaire atteint'}</div>`;
+  $('homePay').innerHTML=`<div class="home-value">${EUR(br.tot)}</div><div class="home-muted">Brut estimé sur la quatorzaine</div><div class="home-list"><div class="home-row"><span>Normal</span><b>${F(q.nor)}</b></div><div class="home-row"><span>HS 25 %</span><b>${F(q.h25)}</b></div><div class="home-row"><span>HS 50 %</span><b>${F(q.h50)}</b></div></div>`;
+  const sorted=alerts.sort((a,b)=>(a.lvl==='b'?0:1)-(b.lvl==='b'?0:1)).slice(0,6);
+  $('homeAlertCount').textContent=alerts.length?alerts.length+' ce mois':'aucune';
+  $('homeAlerts').innerHTML=sorted.length?sorted.map(a=>`<div class="al ${a.lvl}"><b>${shortY(a.k)}</b> — ${esc(a.m)}</div>`).join(''):'<div class="al k">✅ Rien de critique détecté ce mois-ci.</div>';
 }
