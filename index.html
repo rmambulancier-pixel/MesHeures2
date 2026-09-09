@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0d1117">
-<title>MesHeures</title>
+<title>MesHeures V10</title>
+<meta name="application-version" content="10.0.0">
 <link rel="manifest" href="./manifest.json">
 <link rel="icon" href="./icon.svg">
 <link rel="stylesheet" href="./style/refonte.css">
@@ -104,8 +105,9 @@ tr.t{background:#1c2128}tr.t td{font-weight:700}
 </head>
 <body>
 <header>
-<h1>🚑 MesHeures <span id="mhVersion" class="mut" style="font-size:9px;font-weight:500">V2</span> <span id="hBadge" style="display:none" class="badge">!</span></h1>
+<h1>🚑 MesHeures <span id="mhVersion" class="mut" style="font-size:9px;font-weight:500">V3</span> <span id="hBadge" style="display:none" class="badge">!</span></h1>
 <div class="tabs">
+<button id="t-home" onclick="tab('home')">Accueil</button>
 <button id="t-jour" class="on" onclick="tab('jour')">Jour</button>
 <button id="t-mois" onclick="tab('mois')">Mois</button>
 <button id="t-paie" onclick="tab('paie')">Paie</button>
@@ -116,6 +118,19 @@ tr.t{background:#1c2128}tr.t td{font-weight:700}
 </div>
 </header>
 <main>
+<section id="s-home">
+<div class="hero"><div><div class="eyebrow">MESHEURES · TABLEAU DE BORD</div><h2 class="home-title">Votre situation en un coup d’œil</h2><div class="home-date" id="homeDate"></div></div><button class="home-go" onclick="tab('jour')">+ Saisir aujourd’hui</button></div>
+<div class="home-kpis" id="homeKpi"></div>
+<div class="home-grid">
+  <div class="card home-card"><h2>📅 Quatorzaine</h2><div id="homeQuat"></div></div>
+  <div class="card home-card"><h2>💶 Paie estimée</h2><div id="homePay"></div></div>
+</div>
+<div class="card home-card"><h2>⚠️ À surveiller <span class="sub" id="homeAlertCount"></span></h2><div id="homeAlerts"></div></div>
+<div class="card home-card"><h2>⚡ Actions rapides</h2><div class="quick-grid">
+<button onclick="tab('jour')">🕐 Journée</button><button onclick="tab('mois')">📆 Mois</button><button onclick="tab('paie')">💰 Paie</button><button onclick="tab('audit')">🔎 Audit</button>
+</div></div>
+</section>
+
 
 <section id="s-jour" class="on">
 <div class="nav">
@@ -135,6 +150,7 @@ tr.t{background:#1c2128}tr.t td{font-weight:700}
 <div class="fab">
 <button class="g" onclick="goToday()">📅 Aujourd'hui</button>
 <button class="g" onclick="dupliConfirm()">📋 Copier veille</button>
+<button class="g danger-soft" onclick="clearDay()">🗑️ Effacer</button>
 <button class="g" onclick="window.print()">🖨️ Imprimer</button>
 </div>
 </section>
