@@ -7,6 +7,7 @@
 <title>MesHeures</title>
 <link rel="manifest" href="./manifest.json">
 <link rel="icon" href="./icon.svg">
+<link rel="stylesheet" href="./style/refonte.css">
 <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -103,7 +104,7 @@ tr.t{background:#1c2128}tr.t td{font-weight:700}
 </head>
 <body>
 <header>
-<h1>🚑 MesHeures <span id="hBadge" style="display:none" class="badge">!</span></h1>
+<h1>🚑 MesHeures <span id="mhVersion" class="mut" style="font-size:9px;font-weight:500">V2</span> <span id="hBadge" style="display:none" class="badge">!</span></h1>
 <div class="tabs">
 <button id="t-jour" class="on" onclick="tab('jour')">Jour</button>
 <button id="t-mois" onclick="tab('mois')">Mois</button>
