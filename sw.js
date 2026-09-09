@@ -1,5 +1,5 @@
-const CACHE = 'mesheures-shell-v2';
-const SHELL = ['./', './index.html', './manifest.json', './icon.svg', './style/style.css', './scripts/app.js'];
+const CACHE = 'mesheures-shell-v1';
+const SHELL = ['./', './index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
@@ -17,6 +17,9 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
 
+  // Coquille de l'app : cache-first, pour ouvrir MesHeures sans réseau.
+  // Bibliothèques CDN (xlsx / pdf.js / tesseract) : mises en cache dès le premier
+  // chargement, pour que l'import PDF/Excel/OCR fonctionne aussi hors-ligne ensuite.
   event.respondWith(
     caches.match(req).then((cached) => {
       if (cached) return cached;
