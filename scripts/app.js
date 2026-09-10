@@ -7,12 +7,14 @@
 const TAUX_AUXILIAIRE = 12.10;   // Niveau 1
 const TAUX_AMBULANCIER = 12.75;  // Niveau 2
 const TAUX_AMBULANCIER_3 = 13.40; // Niveau 3
+const TAUX_PERSONNALISE = 14.02;  // TON TAUX
 
 // === INITIALISATION ===
 document.addEventListener('DOMContentLoaded', () => {
     console.log('MesHeures V2 - Démarrage...');
     console.log('Convention : Transport sanitaire (IDCC 16)');
     console.log('Majorations : 25% (36e-43e h) puis 50% (44e h+)');
+    console.log('Ton taux : 14,02 €/h');
     
     initialiserUI();
     attacherEcouteurs();
@@ -38,12 +40,12 @@ window.audit = function() {
     return resultat;
 };
 
-window.paie = function(taux = TAUX_AMBULANCIER) {
+window.paie = function(taux = TAUX_PERSONNALISE) {
     const jours = gestionDonnees.getJours();
     const resultat = paie(jours, taux);
     
     console.log('=== FICHE DE PAIE ===');
-    console.log('Taux horaire:', taux, '€');
+    console.log('Taux horaire:', taux.toFixed(2), '€');
     console.log('Brut total:', formaterEuros(resultat.brut));
     console.log('\nD étail :');
     console.table({
