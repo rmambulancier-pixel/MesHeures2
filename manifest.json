@@ -3,9 +3,15 @@
   "short_name": "MesHeures",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#161B22",
-  "theme_color": "#161B22",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
   "icons": [
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
     {
       "src": "icon.svg",
       "sizes": "any",
