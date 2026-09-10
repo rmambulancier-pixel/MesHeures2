@@ -1,102 +1,200 @@
-// app-core.js - Version corrigé·»e
-// Fonctions utilitaires et gestion des données
+const LS='mesheures_v3';
+const DEF={
+  nom:'',emb:'2019-09-09',
+  taux:14.02,net:0.787,
+  hab:10,habT:12.9688,
+  idaj:12,base:35,pl:16,
+  ir:5.30,iru:9.69,irT:10.40,
+  rc:420,cp:420,anc:0,
+  min:false,maxAmp:14,
+  anchor:'2025-05-19',
+  panDeb:'11:45',panFin:'14:15',
+  dimPrime:0,
+  nuitDeb:'21:00',nuitFin:'06:00',nuitMaj:0,
+  rcAlerte:400
+};
+let DB={s:{...DEF},days:{},cmp:{},periods:[],bul:{},bulletins:[],romi:{},per:{start:'2025-05-19',nb:1},exp:null};
+let curDate,curMonth,curTab='jour';
+let _undo=null;
 
-// === CONSTANTES ===
-const TAUX_HORAIRE = 11.50; // SMIC horaire brut
-const HEURES_MENSUELLES = 151.67;
-
-// === UTILITAIRES ===
-function formaterHeures(minutes) {
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    return `${h}h${m.toString().padStart(2, '0')}`;
+const $=i=>document.getElementById(i);
+const pad=n=>String(n).padStart(2,'0');
+const isoOf=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const today=()=>isoOf(new Date());
+const dOf=s=>new Date(s+'T12:00:00');
+const addD=(s,n)=>{const d=dOf(s);d.setDate(d.getDate()+n);return isoOf(d)};
+const nDays=(a,b)=>Math.round((dOf(b)-dOf(a))/864e5);
+const DOW=['dim','lun','mar','mer','jeu','ven','sam'];
+const MON=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+const dow=s=>DOW[dOf(s).getDay()];
+const dowN=s=>dOf(s).getDay();
+const mono=s=>{const d=dOf(s);d.setDate(d.getDate()-((d.getDay()+6)%7));return isoOf(d)};
+const P=s=>{if(!s||!/^\d{1,2}:\d{2}/.test(s))return null;const[h,m]=s.split(':').map(Number);return h*60+m};
+const F=m=>{if(m==null)return'—';const g=m<0;m=Math.abs(Math.round(m));return(g?'-':'')+Math.floor(m/60)+'h'+pad(m%60)};
+const C2=m=>(m/60).toFixed(2);
+const EUR=n=>typeof n==='number'?n.toFixed(2).replace('.',',')+' €':'—';
+const short=s=>s.slice(8)+'/'+s.slice(5,7);
+const shortY=s=>s.slice(8)+'/'+s.slice(5,7)+'/'+s.slice(2,4);
+const esc=s=>s?String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'';
+function parseNum(s){return parseFloat(s.replace(/\s/g,'').replace(',','.'))||0}
+function numsOfLine(l){
+  const matches=[...l.matchAll(/([\d][\d\s]*(?:[.,]\d+)?)/g)];
+  return matches.map(m=>parseNum(m[0])).filter(n=>!isNaN(n)&&n>0);
 }
 
-function formaterEuros(montant) {
-    return new Intl.NumberFormat('fr-FR', {
-        style: 'currency',
-        currency: 'EUR'
-    }).format(montant);
+function easterOf(y){
+  const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,
+  f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,
+  i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,
+  m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),
+  da=((h+l-7*m+114)%31)+1;
+  return new Date(y,mo-1,da,12);
+}
+const FC={};
+function feriesY(y){
+  if(FC[y])return FC[y];
+  const s=new Set([y+'-01-01',y+'-05-01',y+'-05-08',y+'-07-14',y+'-08-15',y+'-11-01',y+'-11-11',y+'-12-25']);
+  const e=easterOf(y);
+  [1,39,50].forEach(n=>{const d=new Date(e);d.setDate(d.getDate()+n);s.add(isoOf(d))});
+  return FC[y]=s;
+}
+const isFerie=k=>feriesY(+k.slice(0,4)).has(k);
+
+function calcAnc(emb){
+  if(!emb)return{y:0,m:0,pct:0};
+  const e=dOf(emb),n=new Date();
+  let y=n.getFullYear()-e.getFullYear(),mo=n.getMonth()-e.getMonth();
+  if(mo<0){y--;mo+=12}
+  let pct=0;
+  if(y>=2)pct=Math.min(2+(y-2),12);
+  return{y,m:mo,pct};
 }
 
-function parserHeures(chaine) {
-    // Supporte : "8h30", "8:30", "8.5", "8h"
-    if (!chaine) return 0;
-    
-    const match = chaine.match(/(\d+)[h.:](\d+)?/);
-    if (match) {
-        const heures = parseInt(match[1]);
-        const minutes = match[2] ? parseInt(match[2]) : 0;
-        return heures * 60 + minutes;
+
+function cd(k){
+  const d=DB.days[k],S=DB.s;
+  const r={amp:0,tte:0,seuil:0,idaj:0,ir:0,iru:0,rc:0,fer:0,dim:0,trav:0,pz:0,nuit:0,al:[],deb:null,fin:null,t:d?d.t:null};
+  if(!d)return r;
+  const isDim=dowN(k)===0;
+  if(d.t==='T'){
+    const a=P(d.deb),b0=P(d.fin);
+    if(a==null||b0==null){r.al.push({lvl:'b',m:'Horaires incomplets'});return r}
+    const b=b0<=a?b0+1440:b0, br=b-a;
+    const pd=P(S.panDeb),pf=P(S.panFin),panOK=a<=pd&&b>=pf;
+    (d.p||[]).forEach(p=>{
+      const x=P(p.d); let y=P(p.f);
+      if(x!=null&&y!=null){if(y<x)y+=1440;r.pz+=y-x}
+    });
+    // Panier repas : plus besoin de saisir une pause pour qu'il soit compté.
+    // d.panier ('EXT'/'ENT'/'NON') = choix explicite en 1 tap qui prévaut toujours.
+    // Sans choix explicite : si des pauses ENT/EXT sont déjà saisies (import AmbuTrack), on les garde ;
+    // sinon, dès que le service couvre toute la plage repas, un panier extérieur est compté automatiquement.
+    if(d.panier==='NON'){/* aucun panier, forcé */}
+    else if(d.panier==='ENT')r.iru=1;
+    else if(d.panier==='EXT')r.ir=1;
+    else if(panOK&&(d.p||[]).length){
+      // Un seul panier par jour, même si plusieurs pauses sont saisies : priorité au repas intérieur si les deux types coexistent.
+      const hasEnt=(d.p||[]).some(p=>p.ty==='ENT');
+      if(hasEnt)r.iru=1;else r.ir=1;
     }
-    
-    const decimal = parseFloat(chaine);
-    if (!isNaN(decimal)) {
-        return Math.round(decimal * 60);
+    else if(panOK)r.ir=1;
+    r.amp=br+S.hab; r.tte=br-r.pz;
+    if(S.min&&r.tte<270)r.tte=270;
+    r.seuil=r.tte; r.trav=1;
+    r.deb=a; r.fin=b;
+    r.idaj=Math.max(0,r.amp-S.idaj*60);
+    if(d.fer)r.fer=r.tte;
+    if(isDim)r.dim=1;
+    r.nuit=minutesNuit(a,b,S);
+    if(r.amp>S.maxAmp*60)r.al.push({lvl:'b',m:'Amplitude '+F(r.amp)+' > '+S.maxAmp+'h réglementaires'});
+    if(r.pz===0&&r.tte>=360)r.al.push({lvl:'w',m:'≥ 6h travaillées sans pause — 20 min dues (art. L3121-16)'});
+    if(isFerie(k)&&!d.fer)r.al.push({lvl:'w',m:'Jour férié travaillé — majoration 100 % non cochée'});
+    if(r.tte>660)r.al.push({lvl:'w',m:'TTE > 11h — journée exceptionnellement longue'});
+  }
+  else if(d.t==='CP')r.seuil=S.cp;
+  else if(d.t==='RC')r.rc=S.rc;
+  else if(d.t==='NUIT'){
+    const a=P(d.deb),b0=P(d.fin);
+    if(a!=null&&b0!=null){
+      const b=b0<=a?b0+1440:b0,br=b-a;
+      (d.p||[]).forEach(p=>{const x=P(p.d);let y=P(p.f);if(x!=null&&y!=null){if(y<x)y+=1440;r.pz+=y-x}});
+      r.amp=br+S.hab; r.tte=br-r.pz;
+      r.seuil=r.tte; r.trav=1; r.deb=a; r.fin=b;
+      r.nuit=minutesNuit(a,b,S);
     }
-    
-    return 0;
+  }
+  return r;
 }
 
-// === GESTION DES DONNÉ·È·ES ===
-class GestionDonnees {
-    constructor() {
-        this.donnees = {
-            jours: [],
-            parametres: {
-                tauxHoraire: TAUX_HORAIRE,
-                heuresMensuelles: HEURES_MENSUELLES
+function calcPer(start,nb){
+  const S=DB.s,Q=[],AL=[];
+  let pk=null,pe=null;
+  const G={amp:0,tte:0,seuil:0,trav:0,idaj:0,ir:0,iru:0,rc:0,fer:0,dim:0,nuit:0,nor:0,h25:0,h50:0,hab:0,ferJ:[],dimJ:[]};
+  for(let q=0;q<nb;q++){
+    const o={start:addD(start,q*14),w:[],amp:0,tte:0,seuil:0,trav:0,h25:0,h50:0,nor:0};
+    for(let w=0;w<2;w++){
+      const s={start:addD(start,q*14+w*7),amp:0,tte:0,trav:0};
+      for(let i=0;i<7;i++){
+        const k=addD(start,q*14+w*7+i),r=cd(k);
+        s.amp+=r.amp; s.tte+=r.tte; s.trav+=r.trav;
+        o.seuil+=r.seuil;
+        G.idaj+=r.idaj; G.ir+=r.ir; G.iru+=r.iru;
+        G.rc+=r.rc; G.fer+=r.fer; G.nuit+=r.nuit;
+        if(r.fer)G.ferJ.push(k);
+        if(r.dim&&DB.days[k]&&DB.days[k].t==='T'){G.dim++;G.dimJ.push(k)}
+        r.al.forEach(a=>AL.push({k,...a}));
+        if(r.deb!=null){
+          if(pe!=null&&pk){
+            const gapJours=nDays(pk,k);
+            if(gapJours===1){
+              const gap=1440+r.deb-pe;
+              if(gap>0&&gap<660)AL.push({k,lvl:'w',m:'Repos quotidien de '+F(gap)+' seulement (11h requises entre deux postes)'});
             }
-        };
-        this.charger();
-    }
-    
-    charger() {
-        try {
-            const sauvegarde = localStorage.getItem('mesHeures2_donnees');
-            if (sauvegarde) {
-                this.donnees = JSON.parse(sauvegarde);
-            }
-        } catch (e) {
-            console.error('Erreur chargement données:', e);
+          }
+          pk=k; pe=r.fin;
         }
+      }
+      if(s.tte>2880)AL.push({k:s.start,lvl:'b',m:'Semaine à '+F(s.tte)+' — plafond légal 48h dépassé'});
+      o.w.push(s); o.amp+=s.amp; o.tte+=s.tte; o.trav+=s.trav;
     }
-    
-    sauvegarder() {
-        try {
-            localStorage.setItem('mesHeures2_donnees', JSON.stringify(this.donnees));
-        } catch (e) {
-            console.error('Erreur sauvegarde données:', e);
-        }
-    }
-    
-    ajouterJour(jour) {
-        this.donnees.jours.push(jour);
-        this.sauvegarder();
-    }
-    
-    getJours() {
-        return this.donnees.jours;
-    }
-    
-    reset() {
-        this.donnees.jours = [];
-        this.sauvegarder();
-    }
+    const N=S.base*120;
+    o.nor=Math.min(o.seuil,N);
+    o.h25=Math.min(Math.max(o.seuil-N,0),S.pl*60);
+    o.h50=Math.max(o.seuil-N-S.pl*60,0);
+    ['amp','tte','seuil','trav','nor','h25','h50'].forEach(x=>G[x]+=o[x]);
+    Q.push(o);
+  }
+  G.hab=G.trav*S.hab;
+  return{Q,AL,G};
 }
 
-// === INSTANCE GLOBALE ===
-const gestionDonnees = new GestionDonnees();
+function brutOf(G){
+  const S=DB.s,T=S.taux,L=[];
+  const anc=calcAnc(S.emb);
+  const ancPct=S.anc||anc.pct;
+  L.push(['Heures normales',F(G.nor),T.toFixed(2)+' €/h',G.nor/60*T]);
+  if(G.h25)L.push(['HS 25 %',F(G.h25),(T*1.25).toFixed(2)+' €/h',G.h25/60*T*1.25]);
+  if(G.h50)L.push(['HS 50 %',F(G.h50),(T*1.5).toFixed(2)+' €/h',G.h50/60*T*1.5]);
+  if(G.fer)L.push(['Majoration fériés 100 %',F(G.fer),T.toFixed(2)+' €/h',G.fer/60*T]);
+  if(G.rc)L.push(['Repos compensateur',F(G.rc),T.toFixed(2)+' €/h',G.rc/60*T]);
+  if(G.hab)L.push(['Habillage/déshabillage',C2(G.hab)+' h',S.habT.toFixed(4)+' €/h',G.hab/60*S.habT]);
+  if(G.idaj)L.push(['IDAJ (dépassement amplitude)',C2(G.idaj)+' h',T.toFixed(2)+' €/h',G.idaj/60*T]);
+  if(G.dim&&S.dimPrime)L.push(['Prime dimanche',G.dim+' dim.',S.dimPrime.toFixed(2)+' €/dim.',G.dim*S.dimPrime]);
+  if(G.nuit&&S.nuitMaj)L.push(['Majoration heures de nuit',C2(G.nuit)+' h',(S.nuitMaj)+'%',G.nuit/60*T*S.nuitMaj/100]);
+  const sub=L.reduce((a,x)=>a+x[3],0);
+  if(ancPct)L.push(["Prime d'ancienneté",ancPct+' %','sur brut',sub*ancPct/100]);
+  const tot=L.reduce((a,x)=>a+x[3],0);
+  const panIR=G.ir*S.ir, panIRU=G.iru*S.iru, panIRUT=G.iru*S.irT;
+  return{L,tot,panIR,panIRU,panIRUT};
+}
 
-// === EXPORTS ===
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        formaterHeures,
-        formaterEuros,
-        parserHeures,
-        GestionDonnees,
-        gestionDonnees,
-        TAUX_HORAIRE,
-        HEURES_MENSUELLES
-    };
+function minutesNuit(a,b,S){
+  const nd=P(S.nuitDeb),nf=P(S.nuitFin);
+  if(nd==null||nf==null||!S.nuitMaj)return 0;
+  let mn=0;
+  for(let t=a;t<b;t++){
+    const tm=t%1440; // ramène chaque minute à 0-1439, même pour un service qui franchit minuit
+    if(tm>=nd||tm<nf)mn++;
+  }
+  return mn;
 }
