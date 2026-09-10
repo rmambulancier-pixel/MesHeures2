@@ -61,13 +61,22 @@ function feriesY(y){
 const isFerie=k=>feriesY(+k.slice(0,4)).has(k);
 
 function calcAnc(emb){
-  if(!emb)return{y:0,m:0,pct:0};
+  if(!emb)return{y:0,m:0,pct:0,nextPct:2,nextYears:2};
   const e=dOf(emb),n=new Date();
   let y=n.getFullYear()-e.getFullYear(),mo=n.getMonth()-e.getMonth();
   if(mo<0){y--;mo+=12}
-  let pct=0;
-  if(y>=2)pct=Math.min(2+(y-2),12);
-  return{y,m:mo,pct};
+  // Convention collective nationale des transports routiers — transport sanitaire.
+  // L'ambulancier relève du personnel ouvrier : 2 % après 2 ans, 4 % après 5 ans,
+  // 6 % après 10 ans et 8 % après 15 ans. On ne doit surtout pas appliquer 1 point
+  // supplémentaire par année (ancien comportement erroné de l'application).
+  const steps=[[2,2],[5,4],[10,6],[15,8]];
+  let pct=0,nextPct=2,nextYears=2;
+  for(const [years,rate] of steps){
+    if(y>=years)pct=rate;
+    else if(nextYears===2&&years>y) { nextYears=years; nextPct=rate; }
+  }
+  if(y>=15){nextYears=15;nextPct=8}
+  return{y,m:mo,pct,nextPct,nextYears};
 }
 
 

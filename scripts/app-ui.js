@@ -343,7 +343,8 @@ function renderRegBase(){
   $('rEmb').value=DB.s.emb||'';
   $('rAnc').value=DB.s.anc||0;
   const anc=calcAnc(DB.s.emb||DEF.emb);
-  $('rAncCalc').textContent=`${anc.y} ans ${anc.m} mois → taux CCN : ${anc.pct}% (auto)`;
+  const next=anc.y>=15?'plafond conventionnel atteint (8 %)':`prochain palier : ${anc.nextPct}% à ${anc.nextYears} ans`;
+  $('rAncCalc').innerHTML=`<b>${anc.y} ans ${anc.m} mois</b> → <strong>${anc.pct}%</strong> d'ancienneté CCN · <span>${next}</span>`;
   $('rBk').innerHTML=DB.exp?'Dernier export : <b>'+DB.exp+'</b>':'<span style="color:var(--warn)">⚠️ Aucune sauvegarde</span>';
 }
 

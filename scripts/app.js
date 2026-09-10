@@ -438,7 +438,7 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catc
    V15 — INTELLIGENCE / SÉCURITÉ / MODE PRO
    Couche additive : ne modifie pas les règles de calcul historiques.
 ═══════════════════════════════════════════════ */
-const MH_V='15.5';
+const MH_V='15.6';
 
 function mhMonthStats(ym){
   const [y,m]=ym.split('-').map(Number), last=isoOf(new Date(y,m,0));
@@ -592,5 +592,26 @@ function renderReg(){
 }
 
 /* Version et cache */
-if($('mhVersion'))$('mhVersion').textContent='V15.5';
+function mhDecoratePages(){
+  const pages={
+    jour:['🕐','Saisie du jour','Horaires, pauses et primes de la journée'],
+    mois:['📅','Vue mensuelle','Calendrier, cumul des heures et alertes'],
+    paie:['💶','Paie & rémunération','Calcul du brut, heures supplémentaires et RC'],
+    audit:['🛡️','Audit réglementaire','Contrôles, écarts et anomalies à vérifier'],
+    bul:['📄','Bulletins de salaire','Import, lecture et contrôle des bulletins'],
+    romi:['📋','ROMI1','Relevés, OCR et rapprochement avec MesHeures'],
+    reg:['⚙️','Réglages','Contrat, tarifs, ancienneté et sauvegardes']
+  };
+  Object.entries(pages).forEach(([key,v])=>{
+    const sec=$('s-'+key);
+    if(!sec||sec.querySelector('.mh-page-hero'))return;
+    const el=document.createElement('div');
+    el.className='mh-page-hero';
+    el.innerHTML=`<div class="mh-page-icon">${v[0]}</div><div><div class="mh-page-kicker">MESHEURES · ${key.toUpperCase()}</div><div class="mh-page-title">${v[1]}</div><div class="mh-page-sub">${v[2]}</div></div>`;
+    sec.insertBefore(el,sec.firstChild);
+  });
+}
+
+if($('mhVersion'))$('mhVersion').textContent='V15.6';
+mhDecoratePages();
 setTimeout(()=>{try{renderAll()}catch(e){console.error('V15 render',e)}},0);
