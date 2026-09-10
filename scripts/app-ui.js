@@ -253,10 +253,24 @@ function renderAuditBase(){
     return;
   }
   const S=DB.s;
+  // Une même période peut avoir été enregistrée plusieurs fois. On ne doit jamais
+  // afficher deux fois les mêmes événements dans l'audit. Les périodes qui se
+  // chevauchent restent visibles et sont signalées afin de ne supprimer aucune donnée.
+  const seenPeriods=new Set(),auditPeriods=[];
+  (DB.periods||[]).forEach(p=>{
+    const key=p.start+'|'+p.nb;
+    if(!seenPeriods.has(key)){seenPeriods.add(key);auditPeriods.push(p)}
+  });
+  auditPeriods.sort((a,b)=>a.start.localeCompare(b.start));
+  const overlaps=[];
+  for(let i=1;i<auditPeriods.length;i++){
+    const prev=auditPeriods[i-1],prevEnd=addD(prev.start,prev.nb*14-1);
+    if(auditPeriods[i].start<=prevEnd)overlaps.push([prev,auditPeriods[i]]);
+  }
   let T={tte:0,h25:0,h50:0,acq:0,dec:0,ecart:0,fer:[],dim:[],trav:0,nor:0},AA=[];
   let h='<tr><th>Période</th><th class="n">TTE</th><th class="n">HS25</th><th class="n">HS50</th><th class="n">RC calc.</th><th class="n">RC bull.</th><th class="n">Écart</th></tr>';
   const byYear={};
-  DB.periods.forEach(p=>{
+  auditPeriods.forEach(p=>{
     const{G,AL}=calcPer(p.start,p.nb),B=gb(p.start);
     const d25=Math.max(G.h25/60-(B.p25||0),0),d50=Math.max(G.h50/60-(B.p50||0),0),acq=d25*1.25+d50*1.5;
     const ec=B.rcAcq!=null?acq-B.rcAcq:null;
@@ -277,7 +291,7 @@ function renderAuditBase(){
   h+=`<tr class="t"><td>TOTAL</td><td class="n">${F(T.tte)}</td><td class="n">${C2(T.h25)}</td><td class="n">${C2(T.h50)}</td><td class="n">${T.acq.toFixed(2)}</td><td class="n">${T.dec.toFixed(2)}</td><td class="n ${Math.abs(T.ecart)<0.1?'ok':'bad'}">${T.ecart.toFixed(2)}</td></tr>`;
   $('aTab').innerHTML=h;
   $('aKpi').innerHTML=[
-    ['Périodes',DB.periods.length],['Jours travaillés',T.trav],
+    ['Périodes',auditPeriods.length],['Jours travaillés',T.trav],
     ['TTE total',F(T.tte)],['HS 25 %',C2(T.h25)],['HS 50 %',C2(T.h50)],
     ['RC généré',T.acq.toFixed(2)+' h'],
     ['Valeur RC',EUR(T.acq*S.taux)],
@@ -289,11 +303,18 @@ function renderAuditBase(){
     ay+=`<tr><td><b>${y}</b></td><td class="n">${v.trav}</td><td class="n">${F(v.tte)}</td><td class="n">${C2(v.h25)}</td><td class="n">${C2(v.h50)}</td><td class="n">${EUR(brt)}</td></tr>`;
   });
   $('aAnn').innerHTML=ay;
-  $('aFer').innerHTML=(T.fer.length?T.fer.map(k=>{const r=cd(k);
+  const uniqueFer=[...new Set(T.fer)].sort();
+  const uniqueDim=[...new Set(T.dim)].sort();
+  const uniqueAlerts=[];const seenAlerts=new Set();
+  AA.forEach(a=>{const key=a.k+'|'+a.lvl+'|'+a.m;if(!seenAlerts.has(key)){seenAlerts.add(key);uniqueAlerts.push(a)}});
+  const overlapNote=overlaps.length
+    ?`<div class="al w audit-overlap">⚠️ ${overlaps.length} chevauchement${overlaps.length>1?'s':''} entre périodes enregistrées. Vérifie qu’elles ne couvrent pas deux fois les mêmes journées.</div>`
+    :'';
+  $('aFer').innerHTML=overlapNote+(uniqueFer.length?uniqueFer.map(k=>{const r=cd(k);
     return `<div class="al w">☀️ <b>${shortY(k)}</b> — ${F(r.tte)} → maj. 100% = <b>${EUR(r.tte/60*S.taux)}</b></div>`}).join('')
-    +`<div class="al i">Total fériés : <b>${EUR(T.fer.reduce((a,k)=>a+cd(k).tte/60*S.taux,0))}</b></div>`
+    +`<div class="al i">Total fériés : <b>${EUR(uniqueFer.reduce((a,k)=>a+cd(k).tte/60*S.taux,0))}</b></div>`
     :'<div class="al k">✅ Aucun férié travaillé</div>')
-    +(T.dim.length?T.dim.map(k=>`<div class="al w">🔵 <b>${shortY(k)}</b> dimanche travaillé</div>`).join(''):'');
+    +(uniqueDim.length?uniqueDim.map(k=>`<div class="al w">🔵 <b>${shortY(k)}</b> dimanche travaillé</div>`).join(''):'');
   const rcSol=T.acq-T.dec;
   const barPct=Math.min(100,rcSol/S.rcAlerte*100);
   $('aRc').innerHTML=`<div class="kpis">
@@ -304,10 +325,10 @@ function renderAuditBase(){
 </div>
 <div class="${rcSol>S.rcAlerte?'bar bad':'bar warn'}" style="margin-top:9px"><i style="width:${barPct.toFixed(1)}%"></i></div>
 ${rcSol>S.rcAlerte?`<div class="al b" style="margin-top:6px">🚨 Solde RC élevé (${rcSol.toFixed(1)}h / seuil ${S.rcAlerte}h) — risque de perdre des heures !</div>`:''}`;
-  const crit=AA.filter(a=>a.lvl==='b');
-  $('aAl').innerHTML=AA.length
-    ?(crit.length?crit:AA).slice(0,50).map(a=>`<div class="al ${a.lvl}"><b>${shortY(a.k)}</b> — ${esc(a.m)}</div>`).join('')
-    +(AA.length>50?`<div class="mut">… et ${AA.length-50} autres anomalies</div>`:'')
+  const crit=uniqueAlerts.filter(a=>a.lvl==='b');
+  $('aAl').innerHTML=uniqueAlerts.length
+    ?(crit.length?crit:uniqueAlerts).slice(0,50).map(a=>`<div class="al ${a.lvl}"><b>${shortY(a.k)}</b> — ${esc(a.m)}</div>`).join('')
+    +(uniqueAlerts.length>50?`<div class="mut">… et ${uniqueAlerts.length-50} autres anomalies</div>`:'')
     :'<div class="al k">✅ Aucune anomalie sur les périodes enregistrées</div>';
 }
 

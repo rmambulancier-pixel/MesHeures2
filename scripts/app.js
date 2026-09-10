@@ -438,7 +438,7 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catc
    V15 — INTELLIGENCE / SÉCURITÉ / MODE PRO
    Couche additive : ne modifie pas les règles de calcul historiques.
 ═══════════════════════════════════════════════ */
-const MH_V='15.4';
+const MH_V='15.5';
 
 function mhMonthStats(ym){
   const [y,m]=ym.split('-').map(Number), last=isoOf(new Date(y,m,0));
@@ -527,16 +527,21 @@ function renderPay(){
   const host=$('pKpi'); if(!host)return;
   const old=host.parentElement;
   if(old&&!document.getElementById('pProSummary')){
-    const c=document.createElement('div');c.className='card pro-summary';c.id='pProSummary';c.innerHTML=`<h2>💼 Synthèse professionnelle</h2><div class="pro-grid"><div><span>Brut estimé</span><b id="proBrut">${EUR(tot)}</b></div><div><span>Net estimé</span><b id="proNet">${EUR(tot*DB.s.net)}</b></div><div><span>Heures sup.</span><b>${F(G.h25+G.h50)}</b></div><div><span>Écart bulletin</span><b id="proGap">À renseigner</b></div></div>`;old.parentNode.insertBefore(c,old);}
-  const gap=document.getElementById('proGap'),B=gb(st);if(gap)gap.textContent=B.rcAcq==null?'À renseigner':B.rcAcq.toFixed(2)+' h RC';
+    const c=document.createElement('div');c.className='card pro-summary';c.id='pProSummary';c.innerHTML=`<h2>💼 Synthèse professionnelle</h2><div class="pro-grid"><div><span>Brut estimé</span><b id="proBrut">${EUR(tot)}</b></div><div><span>Net estimé</span><b id="proNet">${EUR(tot*DB.s.net)}</b></div><div><span>Heures sup.</span><b id="proHours">${F(G.h25+G.h50)}</b></div><div><span>Écart bulletin</span><b id="proGap">À renseigner</b></div></div>`;old.parentNode.insertBefore(c,old);}
+  const proBrut=document.getElementById('proBrut'),proNet=document.getElementById('proNet'),proHours=document.getElementById('proHours'),gap=document.getElementById('proGap'),B=gb(st);
+  if(proBrut)proBrut.textContent=EUR(tot);
+  if(proNet)proNet.textContent=EUR(tot*DB.s.net);
+  if(proHours)proHours.textContent=F(G.h25+G.h50);
+  if(gap)gap.textContent=B.rcAcq==null?'À renseigner':B.rcAcq.toFixed(2)+' h RC';
 }
 
 function renderAudit(){
   renderAuditBase();
   const host=$('aKpi');if(!host)return;
-  const periods=DB.periods||[], all=[];periods.forEach(p=>all.push(...calcPer(p.start,p.nb).AL));
-  const hard=all.filter(a=>a.lvl==='b').length,warn=all.filter(a=>a.lvl==='w').length;
-  host.innerHTML=`<div class="audit-strip"><span>🔎 ${periods.length} période(s)</span><span class="${hard?'bad-text':'ok-text'}">🔴 ${hard} critique(s)</span><span class="${warn?'warn-text':'ok-text'}">🟠 ${warn} attention(s)</span><span>🟢 contrôle terminé</span></div>`+host.innerHTML;
+  const periods=DB.periods||[], seen=new Set(), all=[];periods.forEach(p=>{const pk=p.start+'|'+p.nb;if(seen.has(pk))return;seen.add(pk);all.push(...calcPer(p.start,p.nb).AL)});
+  const unique=[];const ua=new Set();all.forEach(a=>{const k=a.k+'|'+a.lvl+'|'+a.m;if(!ua.has(k)){ua.add(k);unique.push(a)}});
+  const hard=unique.filter(a=>a.lvl==='b').length,warn=unique.filter(a=>a.lvl==='w').length;
+  host.innerHTML=`<div class="audit-strip"><span>🔎 ${seen.size} période(s)</span><span class="${hard?'bad-text':'ok-text'}">🔴 ${hard} critique(s)</span><span class="${warn?'warn-text':'ok-text'}">🟠 ${warn} attention(s)</span><span>🟢 contrôle terminé</span></div>`+host.innerHTML;
 }
 
 /* Export V15 : enveloppe versionnée, import compatible avec les anciens JSON. */
@@ -587,5 +592,5 @@ function renderReg(){
 }
 
 /* Version et cache */
-if($('mhVersion'))$('mhVersion').textContent='V15.4';
+if($('mhVersion'))$('mhVersion').textContent='V15.5';
 setTimeout(()=>{try{renderAll()}catch(e){console.error('V15 render',e)}},0);
