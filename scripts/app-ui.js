@@ -67,8 +67,11 @@ function mettreAJourAffichage() {
     }
     
     if (UI.affichageTotalHeures && UI.affichageBrut) {
-        const stats = calculerTotalHeures(jours);
-        UI.affichageTotalHeures.textContent = formaterHeures(stats.total);
+        let totalMinutes = 0;
+        for (const jour of jours) {
+            totalMinutes += calculerHeuresTravaillees(jour);
+        }
+        UI.affichageTotalHeures.textContent = formaterHeures(totalMinutes);
         
         const resultatPaie = paie(jours);
         UI.affichageBrut.textContent = formaterEuros(resultatPaie.brut);
@@ -157,7 +160,7 @@ function lancerAudit() {
     }
     
     afficherMessage(
-        `Audit : ${resultat.totalJours} jours, ${formaterHeures(resultat.totalHeures)} travaillées`,
+        `Audit : ${resultat.totalJours} jours, ${formaterHeures(resultat.totalHeures)} travaill é es (${resultat.heuresDecimales.toFixed(2)}h)`,
         'success'
     );
     
@@ -173,12 +176,25 @@ function lancerPaie() {
         return;
     }
     
+    const sup = resultat.heuresSupplementaires;
     afficherMessage(
-        `Paie : ${formaterEuros(resultat.brut)} brut (${resultat.heuresNormales.toFixed(2)}h normales + ${resultat.heuresSupplementaires.toFixed(2)}h sup)`,
+        `Paie : ${formaterEuros(resultat.brut)} brut\n` +
+        `  • ${resultat.heuresNormales.toFixed(2)}h normales\n` +
+        `  • ${sup.tranche25.toFixed(2)}h sup à 25% (${formaterEuros(resultat.details.brutSup25)})\n` +
+        `  • ${sup.tranche50.toFixed(2)}h sup à 50% (${formaterEuros(resultat.details.brutSup50)})`,
         'success'
     );
     
     console.log('D étails paie:', resultat);
+    console.table({
+        'Heures normales': resultat.heuresNormales.toFixed(2) + 'h',
+        'Sup 25% (36e-43e)': sup.tranche25.toFixed(2) + 'h',
+        'Sup 50% (44e+)': sup.tranche50.toFixed(2) + 'h',
+        'Brut normal': formaterEuros(resultat.details.brutNormal),
+        'Brut sup 25%': formaterEuros(resultat.details.brutSup25),
+        'Brut sup 50%': formaterEuros(resultat.details.brutSup50),
+        'BRUT TOTAL': formaterEuros(resultat.brut)
+    });
 }
 
 function exporterDonnees() {
