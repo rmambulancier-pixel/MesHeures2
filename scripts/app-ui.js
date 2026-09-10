@@ -20,7 +20,6 @@ function tab(t){
     $('t-'+x).classList.toggle('on',x===t);
   });
   window.scrollTo(0,0);
-  const mm=$('mhMoreMenu'); if(mm)mm.classList.remove('on');
   renderAll();
 }
 
@@ -160,64 +159,6 @@ Projection à rythme constant : <b>${F(Math.round(projH25))}</b> HS 25% · <b>${
 
 function goMonth(n){const d=dOf(curMonth+'-01');d.setMonth(d.getMonth()+n);curMonth=isoOf(d).slice(0,7);renderMonth()}
 
-function renderMonth(){
-  $('mLbl').textContent=MON[+curMonth.slice(5,7)-1]+' '+curMonth.slice(0,4);
-  let h=['L','M','M','J','V','S','D','Σ'].map(x=>`<div class="h">${x}</div>`).join('');
-  let cur=mono(curMonth+'-01');
-  const G={amp:0,tte:0,trav:0,ir:0,iru:0,idaj:0,dim:0,fer:0};
-  const chartD=[];
-  for(let w=0;w<6;w++){
-    let wa=0,wt=0;
-    for(let i=0;i<7;i++){
-      const k=addD(cur,w*7+i),r=cd(k),out=k.slice(0,7)!==curMonth;
-      const hasErr=r.al.some(a=>a.lvl==='b');
-      if(!out){
-        wa+=r.amp;wt+=r.tte;
-        G.amp+=r.amp;G.tte+=r.tte;G.trav+=r.trav;
-        G.ir+=r.ir;G.iru+=r.iru;G.idaj+=r.idaj;
-        G.dim+=r.dim;G.fer+=r.fer;
-        if(r.tte>0)chartD.push({k,v:r.tte,hs:false});
-      }
-      const ic=[]
-      if(DB.days[k]?.fer)ic.push('☀️');
-      else if(isFerie(k))ic.push('·');
-      if(r.ir+r.iru)ic.push('🍽️');
-      if(r.nuit)ic.push('🌙');
-      if(r.dim&&r.trav)ic.push('🔵');
-      h+=`<div class="cel ${r.t||''} ${out?'off':''} ${k===today()?'now':''} ${hasErr&&!out?'err':''}"
-onclick="curDate='${k}';tab('jour')">
-<div class="d">${+k.slice(8)}</div>
-<div class="v">${r.tte?F(r.tte):(r.t==='RC'?'RC':r.t==='CP'?'CP':r.t==='MAL'?'AM':r.t==='NUIT'?'🌙':'')}</div>
-<div class="ic">${ic.join('')}</div>
-</div>`;
-    }
-    h+=`<div class="rec">${wt?'<span style="font-size:9px">'+F(wa)+'</span><b>'+F(wt)+'</b>':''}</div>`;
-    if(addD(cur,w*7+7).slice(0,7)!==curMonth&&w>=3)break;
-  }
-  $('mCal').innerHTML=h;
-  $('mKpi').innerHTML=[
-    ['Amplitude',F(G.amp)],['TTE',F(G.tte)],['Jours trav.',G.trav],
-    ['Paniers',G.ir+G.iru],['Dimanches',G.dim],['Fériés trav.',G.fer?'oui':'—']
-  ].map(x=>`<div class="kpi"><b>${x[1]}</b><span>${x[0]}</span></div>`).join('');
-  const BARZONE=68; // px disponibles au-dessus du libellé de jour, dans une .chart de 92px
-  const max=Math.max(...chartD.map(x=>x.v),1);
-  $('mChart').innerHTML=chartD.map(x=>{
-    const px=Math.max(2,(x.v/max*BARZONE)).toFixed(1);
-    return `<div class="bar-w"><div class="bv${x.hs?' hs':''}" style="height:${px}px" title="${short(x.k)} ${F(x.v)}"></div><div class="bl">${+x.k.slice(8)}</div></div>`;
-  }).join('');
-  let dimH='';
-  const m=curMonth;
-  for(let i=1;i<=31;i++){
-    const k=m+'-'+pad(i);
-    if(k.slice(0,7)!==m)break;
-    try{dOf(k)}catch(e){break}
-    const r=cd(k);
-    if(r.dim&&r.trav)dimH+=`<div class="al w">🔵 ${shortY(k)} dimanche travaillé${DB.s.dimPrime?' — prime '+EUR(DB.s.dimPrime):''}  · ${F(r.tte)}</div>`;
-    if(r.fer&&DB.days[k]?.t==='T')dimH+=`<div class="al w">☀️ ${shortY(k)} férié travaillé · ${F(r.tte)} · maj. 100% = ${EUR(r.tte/60*DB.s.taux)}</div>`;
-  }
-  $('mDim').innerHTML=dimH||'<span class="mut">Aucun dimanche ni férié travaillé ce mois.</span>';
-}
-
 function goPer(n){
   DB.per.start=addD(DB.per.start,n*14*DB.per.nb);
   save();renderPay();
@@ -233,7 +174,7 @@ function regPer(){
   alert('✅ Période enregistrée dans l\'audit');renderAll();
 }
 
-function renderPay(){
+function renderPayBase(){
   const S=DB.s,st=DB.per.start,nb=DB.per.nb,B=gb(st);
   $('pS').value=st;$('pN').value=nb;
   $('pP25').value=B.p25??'';$('pP50').value=B.p50??'';
@@ -301,7 +242,7 @@ ${sol>S.rcAlerte?`<div class="al b" style="margin-top:6px">🚨 Solde RC > ${S.r
   $('pCmp').innerHTML=c;
 }
 
-function renderAudit(){
+function renderAuditBase(){
   if(!DB.periods.length){
     ['aTab','aKpi','aAnn','aRc'].forEach(id=>$(id).innerHTML='');
     $('aFer').innerHTML=$('aAl').innerHTML='<div class="al i">Aucune période enregistrée.</div>';
@@ -366,7 +307,7 @@ ${rcSol>S.rcAlerte?`<div class="al b" style="margin-top:6px">🚨 Solde RC élev
     :'<div class="al k">✅ Aucune anomalie sur les périodes enregistrées</div>';
 }
 
-function renderReg(){
+function renderRegBase(){
   for(const g in RG)$(g).innerHTML=RG[g].map(([k,l])=>{
     const ty=['anchor','panDeb','panFin','nuitDeb','nuitFin'].includes(k)?
       (k==='anchor'?'date':'time'):'number';
@@ -381,45 +322,7 @@ function renderReg(){
   $('rBk').innerHTML=DB.exp?'Dernier export : <b>'+DB.exp+'</b>':'<span style="color:var(--warn)">⚠️ Aucune sauvegarde</span>';
 }
 
-function mhToggleMore(){
-  let menu=$('mhMoreMenu');
-  if(!menu) return;
-  menu.classList.toggle('on');
-}
-function ensureMobileMore(){
-  let menu=$('mhMoreMenu');
-  if(!menu){
-    menu=document.createElement('div');menu.id='mhMoreMenu';menu.className='mh-more-menu';
-    menu.innerHTML=`<div class="more-title">Autres sections</div>
-      <button onclick="tab('bul');mhToggleMore()">🧾 <span>Bulletin</span></button>
-      <button onclick="tab('romi');mhToggleMore()">📋 <span>ROMI1</span></button>
-      <button onclick="tab('reg');mhToggleMore()">⚙️ <span>Réglages</span></button>`;
-    document.body.appendChild(menu);
-    document.addEventListener('click',e=>{if(!menu.contains(e.target)&&e.target.id!=='mhMore')menu.classList.remove('on')});
-  }
-  const more=$('mhMore');
-  if(more)more.style.display=curTab==='home'?'none':'';
-}
-
-function ensureMobileNav(){
-  let nav=$('mhBottomNav');
-  if(!nav){
-    nav=document.createElement('nav');
-    nav.id='mhBottomNav';nav.className='mh-bottom-nav';nav.setAttribute('aria-label','Navigation principale');
-    nav.innerHTML=`
-      <button data-tab="home" onclick="tab('home')"><span>⌂</span><b>Accueil</b></button>
-      <button data-tab="jour" onclick="tab('jour')"><span>◷</span><b>Jour</b></button>
-      <button data-tab="mois" onclick="tab('mois')"><span>▦</span><b>Mois</b></button>
-      <button data-tab="paie" onclick="tab('paie')"><span>€</span><b>Paie</b></button>
-      <button data-tab="audit" onclick="tab('audit')"><span>⌁</span><b>Audit</b></button>`;
-    document.body.appendChild(nav);
-  }
-  nav.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===curTab));
-}
-
 function renderAll(){
-  ensureMobileMore();
-  ensureMobileNav();
   renderHome();
   if(curTab==='jour')renderDay();
   if(curTab==='mois')renderMonth();
@@ -448,51 +351,3 @@ function copySum(){
   navigator.clipboard.writeText(t).then(()=>alert('✅ Résumé copié !'),()=>prompt('Copie :',t));
 }
 
-/* ═══════════════════════════════════════════════
-   V10 — TABLEAU DE BORD
-═══════════════════════════════════════════════ */
-function renderHome(){
-  const now=today(),m=now.slice(0,7),month=mhMonthStats?mhMonthStats(m):null;
-  const diff=nDays(DB.s.anchor,now),qs=addD(DB.s.anchor,Math.floor(diff/14)*14);
-  const qData=calcPer(qs,1),q=qData.Q[0],qG=qData.G;
-  const todayData=gd(now)||{t:'REPOS'},todayR=cd(now);
-  const N=DB.s.base*120,pc=N?Math.min(100,q.seuil/N*100):0;
-  $('homeDate').textContent=shortY(now)+' · '+dow(now).toUpperCase()+' · '+MON[+m.slice(5)-1];
-  $('homeTodayTte').textContent=F(todayR.tte);
-  $('homeTodayCaption').textContent=todayData.t==='T'
-    ?'Journée travaillée · amplitude '+F(todayR.amp)
-    :todayData.t==='NUIT'?'Nuit · '+F(todayR.tte)
-    :'Aujourd’hui · '+(todayData.t==='CP'?'Congé payé':todayData.t==='RC'?'Repos compensateur':todayData.t==='MAL'?'Maladie':'aucune journée travaillée');
-
-  const days=[];let sum7=0;
-  for(let i=6;i>=0;i--){const k=addD(now,-i),r=cd(k);days.push({k,r});sum7+=r.tte}
-  const max=Math.max(1,...days.map(x=>x.r.tte));
-  $('homeMiniChart').innerHTML=days.map(x=>{
-    const h=x.r.tte?Math.max(10,Math.round(x.r.tte/max*100)):5;
-    const cls=x.k===now?'today':'';
-    return `<div class="mini-day"><i class="${cls}" style="height:${h}%"></i><span>${dOf(x.k).getDate()}</span></div>`;
-  }).join('');
-
-  const avg=month&&month.trav?month.tte/month.trav:0,avgAmp=month&&month.trav?month.amp/month.trav:0;
-  $('homeAvg').textContent=F(Math.round(avg));
-  $('homeAvgSub').textContent=month&&month.trav?month.trav+' jour'+(month.trav>1?'s':'')+' travaillé'+(month.trav>1?'s':''):'Aucune journée';
-  $('homeAvgAmp').textContent=F(Math.round(avgAmp));
-  $('homeWorkSub').textContent=(month?.trav||0)+' jour'+((month?.trav||0)>1?'s':'')+' travaillé'+((month?.trav||0)>1?'s':'');
-  $('homePeriod').textContent='7 derniers jours · '+F(sum7);
-
-  $('homeActivity').innerHTML=days.map(x=>{
-    const d=dOf(x.k),label=['dim','lun','mar','mer','jeu','ven','sam'][d.getDay()],r=x.r;
-    const state=r.t==='T'?'work':r.t==='NUIT'?'night':r.t==='CP'?'leave':r.t==='RC'?'rest':'empty';
-    return `<button class="activity-day ${state}" onclick="mhOpenDay('${x.k}')"><b>${label}</b><strong>${r.tte?F(r.tte):'—'}</strong><small>${d.getDate()}/${d.getMonth()+1}</small></button>`;
-  }).join('');
-
-  $('homeQuat').innerHTML=`<div class="big-inline"><b>${F(q.seuil)}</b><span>${short(qs)} → ${short(addD(qs,13))}</span></div><div class="dash-progress"><i style="width:${pc.toFixed(1)}%"></i></div><div class="dash-muted">${q.seuil<N?'Marge avant HS : <b>'+F(N-q.seuil)+'</b>':'🔥 Seuil atteint'}</div>`;
-  const br=brutOf(qG);
-  $('homePay').innerHTML=`<div class="pay-big">${EUR(br.tot)}</div><div class="dash-muted">Brut estimé · quatorzaine courante</div><div class="pay-lines"><div><span>Normal</span><b>${F(q.nor)}</b></div><div><span>HS 25 %</span><b>${F(q.h25)}</b></div><div><span>HS 50 %</span><b>${F(q.h50)}</b></div></div>`;
-
-  const alerts=(month?.alerts||[]).slice().sort((a,b)=>(a.lvl==='b'?0:1)-(b.lvl==='b'?0:1));
-  const hard=alerts.filter(a=>a.lvl==='b').length,warn=alerts.filter(a=>a.lvl==='w').length;
-  $('homeAlertCount').textContent=alerts.length?alerts.length+' alerte'+(alerts.length>1?'s':''):'OK';
-  $('homeAlertCount2').textContent=alerts.length?hard+' critique'+(hard>1?'s':'')+' · '+warn+' attention'+(warn>1?'s':''):'aucune';
-  $('homeAlerts').innerHTML=alerts.length?alerts.slice(0,5).map(a=>`<button class="dash-alert ${a.lvl}" onclick="mhOpenDay('${a.k}')"><span>${a.lvl==='b'?'🔴':'🟠'}</span><div><b>${shortY(a.k)}</b><small>${esc(a.m)}</small></div><em>›</em></button>`).join(''):'<div class="dash-ok">✓ Aucun point critique détecté ce mois-ci.</div>';
-}
