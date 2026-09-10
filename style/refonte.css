@@ -138,3 +138,58 @@ label{margin-bottom:5px}
   .pro-grid>div{min-height:66px;display:flex;flex-direction:column;justify-content:center;}
 }
 @media(min-width:601px){.tabs{display:grid!important;grid-template-columns:repeat(8,minmax(0,1fr));}}
+
+/* ═══════════════════════════════════════════════
+   V15.6 — DESIGN PREMIUM UNIFIÉ
+   Même langage visuel que l'Accueil sur toutes les pages.
+═══════════════════════════════════════════════ */
+.mh-page-hero{display:flex;align-items:center;gap:12px;padding:7px 3px 15px;margin-bottom:2px}
+.mh-page-icon{width:44px;height:44px;flex:0 0 44px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(145deg,#242a35,#141922);border:1px solid #343c48;font-size:20px;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.mh-page-kicker{font-size:9px;letter-spacing:1.35px;font-weight:900;color:#8d99a6}
+.mh-page-title{font-size:21px;font-weight:850;line-height:1.12;letter-spacing:-.35px;margin-top:3px}
+.mh-page-sub{font-size:11px;color:#7f8b98;margin-top:4px}
+section:not(.mh-dashboard) .card{border-radius:19px;background:linear-gradient(145deg,#171d25,#10151c);border:1px solid #29333e;box-shadow:0 10px 30px rgba(0,0,0,.16);padding:15px;margin-bottom:12px}
+section:not(.mh-dashboard) .card>h2{font-size:16px;color:#eef3f7;margin-bottom:12px;letter-spacing:-.1px}
+section:not(.mh-dashboard) .card>h2::first-letter{color:#67dc91}
+section:not(.mh-dashboard) .nav{background:rgba(9,13,18,.76);border:1px solid #252f3a;border-radius:16px;padding:7px;margin:0 0 12px;box-shadow:0 10px 30px rgba(0,0,0,.14)}
+section:not(.mh-dashboard) .nav button{border-radius:12px;background:#171e27;border:1px solid #2b3541}
+section:not(.mh-dashboard) .nav .lbl{font-size:14px}
+section:not(.mh-dashboard) .chips{padding:4px;background:#0e141b;border:1px solid #252f39;border-radius:14px;gap:6px}
+section:not(.mh-dashboard) .chips button{border-radius:10px;border:1px solid #293540;background:#171e27}
+section:not(.mh-dashboard) .chips button.on{background:linear-gradient(180deg,#1aaf5d,#138d49);border-color:#1aaf5d}
+section:not(.mh-dashboard) .kpi{min-height:76px;border-radius:14px;background:linear-gradient(145deg,#111820,#0b1016);border:1px solid #2a3440;display:flex;flex-direction:column;justify-content:center}
+section:not(.mh-dashboard) .kpi b{font-size:18px}
+section:not(.mh-dashboard) table{border-collapse:separate;border-spacing:0;overflow:hidden;border:1px solid #28333e;border-radius:13px;background:#0d131a}
+section:not(.mh-dashboard) th{background:#151d26;padding:9px 7px;color:#7f8b98}
+section:not(.mh-dashboard) td{padding:9px 7px;border-bottom:1px solid #202a34}
+section:not(.mh-dashboard) tr:last-child td{border-bottom:0}
+section:not(.mh-dashboard) tr.t td{background:#121a22}
+section:not(.mh-dashboard) input,section:not(.mh-dashboard) select,section:not(.mh-dashboard) textarea{background:#0b1117;border:1px solid #2b3642;box-shadow:inset 0 1px 0 rgba(255,255,255,.02)}
+section:not(.mh-dashboard) label{font-weight:650;color:#8793a0}
+section:not(.mh-dashboard) .al{border-radius:12px;padding:10px 11px}
+section:not(.mh-dashboard) .pz{background:linear-gradient(145deg,#141c24,#0e141b);border-color:#293540;border-radius:13px}
+section:not(.mh-dashboard) .bar{height:9px;border-radius:99px;background:#202a34}
+section:not(.mh-dashboard) .bar i{border-radius:99px}
+section:not(.mh-dashboard) .cal{gap:5px;padding:4px}
+section:not(.mh-dashboard) .cal .h{font-weight:800;color:#7c8996}
+section:not(.mh-dashboard) .cel{border-radius:11px;min-height:62px;background:#0d141b;border-color:#27323d}
+section:not(.mh-dashboard) .cel.now{outline:2px solid #65dc8e;box-shadow:0 0 0 3px rgba(101,220,142,.08)}
+section:not(.mh-dashboard) .chart{height:120px;padding:12px 6px 0;border:1px solid #27323d;border-radius:14px;background:#0d141b}
+section:not(.mh-dashboard) .chart .bar-w .bv{border-radius:5px 5px 2px 2px}
+section:not(.mh-dashboard) button{border-radius:11px}
+section:not(.mh-dashboard) .pro-summary{background:linear-gradient(145deg,#16212d,#0e151d);border-color:#31506d}
+section:not(.mh-dashboard) .security-box{background:linear-gradient(145deg,#151d26,#0d131a);border-radius:15px;border-color:#2c3743}
+section:not(.mh-dashboard) details{background:#0d141b;border:1px solid #293540;border-radius:14px;padding:10px}
+section:not(.mh-dashboard) details>summary{cursor:pointer;font-weight:700}
+.tabs{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));overflow:visible!important}
+.tabs button{width:100%;min-width:0!important;min-height:44px;border-radius:12px;font-size:12px}
+@media(min-width:760px){.tabs{grid-template-columns:repeat(8,minmax(0,1fr))!important}}
+@media(max-width:599px){
+  main{padding:11px 12px 24px}
+  .mh-page-hero{padding-top:4px}
+  .mh-page-title{font-size:20px}
+  section:not(.mh-dashboard) .card{padding:13px;border-radius:17px}
+  section:not(.mh-dashboard) .kpis{grid-template-columns:repeat(2,1fr)}
+  section:not(.mh-dashboard) .cal{gap:3px}
+  section:not(.mh-dashboard) .cel{min-height:57px}
+}
