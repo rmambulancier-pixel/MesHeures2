@@ -438,7 +438,7 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catc
    V15 — INTELLIGENCE / SÉCURITÉ / MODE PRO
    Couche additive : ne modifie pas les règles de calcul historiques.
 ═══════════════════════════════════════════════ */
-const MH_V='15.6';
+const MH_V='15.7';
 
 function mhMonthStats(ym){
   const [y,m]=ym.split('-').map(Number), last=isoOf(new Date(y,m,0));
@@ -500,21 +500,79 @@ function renderHome(){
   $('homeAlerts').innerHTML=sorted.length?sorted.map(a=>`<button class="dash-alert ${a.lvl}" onclick="mhOpenDay('${a.k}')"><span>${a.lvl==='b'?'🔴':'🟠'}</span><div><b>${shortY(a.k)}</b><small>${esc(a.m)}</small></div><em>›</em></button>`).join(''):'<div class="dash-ok">✓ Aucun point critique détecté ce mois-ci.</div>';
 }
 
+let monthMode='calendar';
+function setMonthMode(mode){
+  monthMode=mode==='planning'?'planning':'calendar';
+  const a=$('mModeCal'),b=$('mModePlan');
+  if(a)a.classList.toggle('on',monthMode==='calendar');
+  if(b)b.classList.toggle('on',monthMode==='planning');
+  renderMonth();
+}
+function goTodayMonth(){curMonth=today().slice(0,7);curDate=today();renderMonth();window.scrollTo(0,0)}
+function monthDayState(d0,r){
+  if(!d0)return 'empty';
+  if(d0.t==='T')return r.al.some(a=>a.lvl==='b')?'critical':'work';
+  if(d0.t==='NUIT')return 'night';
+  if(d0.t==='CP')return 'leave';
+  if(d0.t==='RC')return 'rest';
+  if(d0.t==='MAL')return 'sick';
+  return 'empty';
+}
+function monthBadge(d0,r){
+  if(d0.t==='CP')return '<span class="day-badge leave">CP</span>';
+  if(d0.t==='RC')return '<span class="day-badge rest">RC</span>';
+  if(d0.t==='MAL')return '<span class="day-badge sick">MAL</span>';
+  if(d0.t==='NUIT')return '<span class="day-badge night">NUIT</span>';
+  if(d0.t==='T')return '<span class="day-badge work">TRAVAIL</span>';
+  return '<span class="day-badge empty">REPOS</span>';
+}
 function renderMonth(){
   const d=dOf(curMonth+'-01'),y=d.getFullYear(),m=d.getMonth(),first=new Date(y,m,1),days=new Date(y,m+1,0).getDate(),offset=(first.getDay()+6)%7;
   $('mLbl').textContent=MON[m]+' '+y;
-  let h=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim','Σ'].map(x=>`<div class="h">${x}</div>`).join('');
-  for(let i=0;i<offset;i++)h+='<div class="cel off"></div>';
-  for(let n=1;n<=days;n++){
-    const k=curMonth+'-'+pad(n),d0=gd(k),r=cd(k),err=r.al.some(a=>a.lvl==='b'),a=r.al.length;
-    const val=r.t==='T'||r.t==='NUIT'?F(r.tte):d0.t==='CP'?'CP':d0.t==='RC'?'RC':d0.t==='MAL'?'MAL':'—';
-    h+=`<div class="cel ${d0.t||'REPOS'} ${err?'err':''} ${k===today()?'now':''}" onclick="mhOpenDay('${k}')"><div class="d">${n}</div><div class="v">${val}</div><div class="ic">${a?'⚠️ '+a:(d0.t==='NUIT'?'🌙':d0.t==='CP'?'🏖️':d0.t==='RC'?'↩️':'')}</div></div>`;
-  }
-  const last=new Date(y,m,0); // placeholder for month sum column alignment
-  const weeks=[]; for(let n=1;n<=days;n++){const k=curMonth+'-'+pad(n),r=cd(k),idx=Math.floor((offset+n-1)/7);if(!weeks[idx])weeks[idx]={amp:0,tte:0};weeks[idx].amp+=r.amp;weeks[idx].tte+=r.tte;}
-  Object.values(weeks).forEach(w=>h+=`<div class="rec"><b>${F(w.tte)}</b>${F(w.amp)}</div>`);
-  $('mCal').innerHTML=h;
   const s=mhMonthStats(curMonth), N=DB.s.base*120;
+  const monthLabel=(s.trav+' jour'+(s.trav>1?'s':'')+' travaillé'+(s.trav>1?'s':'')+' · '+F(s.tte)+' TTE');
+  const sum=$('mSummaryLine');if(sum)sum.textContent=monthLabel;
+  if(monthMode==='planning'){
+    let rows='';
+    for(let n=1;n<=days;n++){
+      const k=curMonth+'-'+pad(n),d0=gd(k),r=cd(k),state=monthDayState(d0,r),date=dOf(k),wd=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'][date.getDay()],alerts=r.al.length;
+      const main=r.t==='T'||r.t==='NUIT'?F(r.tte):(d0.t==='CP'?'Congé payé':d0.t==='RC'?'Repos compensateur':d0.t==='MAL'?'Maladie':'Repos');
+      const sub=r.t==='T'||r.t==='NUIT'?F(r.amp)+' amplitude · '+(r.pz?F(r.pz)+' pause':'pause OK'):shortY(k);
+      rows+=`<button class="plan-row ${state} ${k===today()?'now':''}" onclick="mhOpenDay('${k}')"><span class="plan-date"><b>${pad(n)}</b><small>${wd}</small></span><span class="plan-main"><strong>${main}</strong><small>${sub}</small></span><span class="plan-meta">${monthBadge(d0,r)}${alerts?`<em>${alerts} ⚠</em>`:''}</span><span class="plan-arrow">›</span></button>`;
+    }
+    $('mCal').innerHTML=`<div class="planning-list">${rows}</div>`;
+  }else{
+    let h=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(x=>`<div class="h">${x}</div>`).join('');
+    const weeks=[];
+    for(let n=1;n<=days;n++){
+      const k=curMonth+'-'+pad(n),r=cd(k),idx=Math.floor((offset+n-1)/7);
+      if(!weeks[idx])weeks[idx]=[];
+      weeks[idx].push(n);
+    }
+    weeks.forEach((nums,wi)=>{
+      const firstWeek=wi===0;
+      if(firstWeek)for(let i=0;i<offset;i++)h+='<div class="cel off"></div>';
+      while(nums.length<7)nums.push(null);
+      let wa={amp:0,tte:0,trav:0};
+      nums.forEach(n=>{
+        if(!n){h+='<div class="cel off"></div>';return;}
+        const k=curMonth+'-'+pad(n),d0=gd(k),r=cd(k),state=monthDayState(d0,r),a=r.al.length;
+        wa.amp+=r.amp;wa.tte+=r.tte;wa.trav+=r.trav;
+        const val=r.t==='T'||r.t==='NUIT'?F(r.tte):d0.t==='CP'?'CP':d0.t==='RC'?'RC':d0.t==='MAL'?'MAL':'—';
+        const secondary=r.t==='T'||r.t==='NUIT'?F(r.amp):'';
+        const icon=a?`<span class="day-alert-dot">${a}</span>`:(r.t==='NUIT'?'🌙':'');
+        h+=`<button class="cel ${state} ${a?'has-alert':''} ${k===today()?'now':''}" onclick="mhOpenDay('${k}')"><span class="d">${n}</span><span class="v">${val}</span>${secondary?`<span class="day-secondary">${secondary}</span>`:''}<span class="ic">${icon}</span></button>`;
+      });
+      h+=`<div class="week-total"><span>S${wi+1}</span><b>${F(wa.tte)}</b><small>${wa.trav} j · ${F(wa.amp)} amp.</small></div>`;
+    });
+    $('mCal').innerHTML=h;
+  }
+  const sel=gd(curDate),sr=cd(curDate),selHost=$('mSelected');
+  if(selHost){
+    const title=sel&&sel.t==='T'?'Journée travaillée':sel&&sel.t==='NUIT'?'Nuit':sel&&sel.t==='CP'?'Congé payé':sel&&sel.t==='RC'?'Repos compensateur':sel&&sel.t==='MAL'?'Maladie':'Repos';
+    const detail=sr.tte?`${F(sr.tte)} TTE · ${F(sr.amp)} amplitude`:title;
+    selHost.innerHTML=`<div class="selected-day-head"><div><span>JOURNÉE SÉLECTIONNÉE</span><strong>${shortY(curDate)}</strong></div><button class="g" onclick="mhOpenDay('${curDate}')">Modifier ›</button></div><div class="selected-day-body"><div class="selected-icon ${monthDayState(sel,sr)}">${sel&&sel.t==='CP'?'CP':sel&&sel.t==='RC'?'RC':sel&&sel.t==='NUIT'?'🌙':sel&&sel.t==='T'?'✓':'—'}</div><div><b>${title}</b><small>${detail}</small></div>${sr.al.length?`<em>${sr.al.length} alerte${sr.al.length>1?'s':''}</em>`:'<em class="ok">✓ OK</em>'}</div>`;
+  }
   $('mKpi').innerHTML=[['Amplitude',F(s.amp)],['TTE',F(s.tte)],['Jours',s.trav],['HS potentiel',F(Math.max(0,s.tte-N)),'warn'],['Paniers',s.ir+s.iru],['Nuit',C2(s.nuit)+' h'],['Alertes',s.alerts.length,s.hard?'bad':'']].map(x=>`<div class="kpi ${x[2]||''}"><b>${x[1]}</b><span>${x[0]}</span></div>`).join('');
   const max=480;let chart='';for(let n=1;n<=days;n++){const k=curMonth+'-'+pad(n),r=cd(k),hh=Math.min(100,r.tte/max*100),hs=Math.max(0,r.tte-N);chart+=`<div class="bar-w" title="${shortY(k)} · ${F(r.tte)}"><div class="bv ${hs>0?'hs':''}" style="height:${hh.toFixed(1)}%"></div><div class="bl">${n}</div></div>`}$('mChart').innerHTML=chart;
   const alerts=s.alerts.slice().sort((a,b)=>(a.lvl==='b'?0:1)-(b.lvl==='b'?0:1));
