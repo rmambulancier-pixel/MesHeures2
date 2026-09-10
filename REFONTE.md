@@ -18,3 +18,13 @@ Les scripts sont chargés dans cet ordre dans `index.html`, avec `defer`, afin d
 - Syntaxe JavaScript validée avec `node --check` sur les 5 fichiers.
 - Smoke test du moteur de calcul : TTE, amplitude et calcul de période cohérents sur une journée de test.
 - Aucune dépendance supplémentaire n'est requise.
+
+## V16.1 — ALL-IN-ONE PREMIUM
+- Identité Pulse conservée comme identité officielle de MesHeures.
+- Accueil enrichi : état du jour, prochaine journée, activité récente et état de sauvegarde locale.
+- Calendrier : appui long sur une journée avec actions Modifier / Détail / Dupliquer vers / Effacer.
+- Paie : nouvelle fiche de paie estimative avec brut, net estimé, HS, nuit, dimanches et ancienneté.
+- Audit : score de santé du planning et synthèse des contrôles.
+- Bulletin : statut explicite de comparaison calculé ↔ bulletin.
+- Sauvegarde : sauvegarde locale automatique quotidienne + restauration automatique, en plus de l'export JSON.
+- Extensions : gestionnaire .mhplugin conservé et intégré à l'ensemble V16.

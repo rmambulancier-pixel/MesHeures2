@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0d1117">
-<title>MesHeures V16.0</title>
-<meta name="application-version" content="16.0.0">
+<title>MesHeures V16.1</title>
+<meta name="application-version" content="16.1.0">
 <link rel="manifest" href="./manifest.json">
 <link rel="icon" href="./icon.svg">
-<link rel="stylesheet" href="./style/refonte.css?v=16.0.1">
+<link rel="stylesheet" href="./style/refonte.css?v=16.1.0">
 <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -116,7 +116,7 @@ tr.t{background:#1c2128}tr.t td{font-weight:700}
 </head>
 <body><div id="mhSplash"><img src="./icon.svg" alt=""><b>MesHeures</b><span>Suivre aujourd’hui · anticiper demain</span></div>
 <header>
-<h1><img src="./icon.svg" class="mh-header-logo" alt="" width="24" height="24"> MesHeures <span id="mhVersion" class="mut" style="font-size:9px;font-weight:500">V16.0</span> <span id="hBadge" style="display:none" class="badge">!</span></h1>
+<h1><img src="./icon.svg" class="mh-header-logo" alt="" width="24" height="24"> MesHeures <span id="mhVersion" class="mut" style="font-size:9px;font-weight:500">V16.1</span> <span id="hBadge" style="display:none" class="badge">!</span></h1>
 <div class="tabs">
 <button id="t-home" onclick="tab('home')">Accueil</button>
 <button id="t-jour" class="on" onclick="tab('jour')">Jour</button>
@@ -135,6 +135,7 @@ tr.t{background:#1c2128}tr.t td{font-weight:700}
   <button class="dash-settings g" onclick="tab('reg')" aria-label="Réglages">⚙️</button>
 </div>
 <div class="dash-sub" id="homeDate"></div>
+<div id="homeBackupStatus" class="home-backup-status"></div>
 <div class="dash-smart" id="homeSmart"></div>
 
 <div class="hero-pro">
@@ -223,6 +224,7 @@ tr.t{background:#1c2128}tr.t td{font-weight:700}
 <div style="margin-top:9px" id="pAlign"></div>
 <button onclick="regPer()" style="margin-top:6px;width:100%">📌 Enregistrer dans l'audit</button>
 </div>
+<div class="card pay-sim-card" id="pSimCard"><div class="pay-sim-head"><div><span class="eyebrow">SIMULATION</span><h2>💶 Fiche de paie estimative</h2></div><span class="sim-badge">ESTIMATION</span></div><div id="pSim"></div><div class="sim-disclaimer">Simulation indicative — elle ne remplace pas votre bulletin de salaire.</div></div>
 <div class="card"><h2>KPIs</h2><div class="kpis" id="pKpi"></div></div>
 <div class="card"><h2>Détail quatorzaines</h2><div style="overflow-x:auto"><table id="pTab"></table></div></div>
 <div class="card"><h2>Anomalies <span class="sub" id="pAlCount"></span></h2><div id="pAl"></div></div>
@@ -265,7 +267,7 @@ tr.t{background:#1c2128}tr.t td{font-weight:700}
 <div id="bulOut" style="margin-top:9px"></div>
 </div>
 <div class="card" id="bulResultCard" style="display:none">
-<h2>Résultat de l'analyse <span class="sub" id="bulMois"></span></h2>
+<h2>Résultat de l'analyse <span class="sub" id="bulMois"></span></h2><div id="bulStatus" class="bulletin-status"></div>
 <div class="kpis" id="bulKpi"></div>
 <div style="margin-top:10px;overflow-x:auto"><table id="bulTab"></table></div>
 <div id="bulAl" style="margin-top:10px"></div>
@@ -350,6 +352,23 @@ tr.t{background:#1c2128}tr.t td{font-weight:700}
 </div>
 </section>
 </main>
+
+<div class="modal-bg" id="dayMenuModal">
+<div class="modal day-menu-modal">
+<div class="day-menu-kicker">MESHEURES · JOURNÉE</div>
+<h3 id="dayMenuTitle">Journée</h3>
+<div id="dayMenuSummary" class="day-menu-summary"></div>
+<label>Date de destination</label>
+<input type="date" id="dayDupTarget">
+<div class="day-menu-actions">
+<button onclick="dayMenuAction('edit')">✏️ Modifier</button>
+<button class="g" onclick="dayMenuAction('detail')">📊 Voir le détail</button>
+<button class="g" onclick="dayMenuAction('duplicate')">📋 Dupliquer vers…</button>
+<button class="r" onclick="dayMenuAction('clear')">🗑️ Effacer</button>
+</div>
+<button class="g day-menu-close" onclick="closeModal('dayMenuModal')">Fermer</button>
+</div>
+</div>
 
 <div class="modal-bg" id="undoModal">
 <div class="modal">

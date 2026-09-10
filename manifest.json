@@ -17,5 +17,6 @@
       "sizes": "any",
       "type": "image/svg+xml"
     }
-  ]
+  ],
+  "description": "Suivi professionnel des heures, paie, audit et extensions pour ambulanciers"
 }
