@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0d1117">
-<title>MesHeures V10</title>
-<meta name="application-version" content="10.0.0">
+<title>MesHeures V15.3</title>
+<meta name="application-version" content="15.0.0">
 <link rel="manifest" href="./manifest.json">
 <link rel="icon" href="./icon.svg">
 <link rel="stylesheet" href="./style/refonte.css">
@@ -105,7 +105,7 @@ tr.t{background:#1c2128}tr.t td{font-weight:700}
 </head>
 <body>
 <header>
-<h1>🚑 MesHeures <span id="mhVersion" class="mut" style="font-size:9px;font-weight:500">V3</span> <span id="hBadge" style="display:none" class="badge">!</span></h1>
+<h1>🚑 MesHeures <span id="mhVersion" class="mut" style="font-size:9px;font-weight:500">V15.3</span> <span id="hBadge" style="display:none" class="badge">!</span></h1>
 <div class="tabs">
 <button id="t-home" onclick="tab('home')">Accueil</button>
 <button id="t-jour" class="on" onclick="tab('jour')">Jour</button>
@@ -118,17 +118,38 @@ tr.t{background:#1c2128}tr.t td{font-weight:700}
 </div>
 </header>
 <main>
-<section id="s-home">
-<div class="hero"><div><div class="eyebrow">MESHEURES · TABLEAU DE BORD</div><h2 class="home-title">Votre situation en un coup d’œil</h2><div class="home-date" id="homeDate"></div></div><button class="home-go" onclick="tab('jour')">+ Saisir aujourd’hui</button></div>
-<div class="home-kpis" id="homeKpi"></div>
-<div class="home-grid">
-  <div class="card home-card"><h2>📅 Quatorzaine</h2><div id="homeQuat"></div></div>
-  <div class="card home-card"><h2>💶 Paie estimée</h2><div id="homePay"></div></div>
+<section id="s-home" class="mh-dashboard">
+<div class="dash-head">
+  <div class="dash-brand"><div class="dash-logo">🚑</div><div><div class="dash-kicker">MESHEURES <span>PRO</span></div><div class="dash-greeting">Bonjour 👋</div></div></div>
+  <button class="dash-settings g" onclick="tab('reg')" aria-label="Réglages">⚙️</button>
 </div>
-<div class="card home-card"><h2>⚠️ À surveiller <span class="sub" id="homeAlertCount"></span></h2><div id="homeAlerts"></div></div>
-<div class="card home-card"><h2>⚡ Actions rapides</h2><div class="quick-grid">
-<button onclick="tab('jour')">🕐 Journée</button><button onclick="tab('mois')">📆 Mois</button><button onclick="tab('paie')">💰 Paie</button><button onclick="tab('audit')">🔎 Audit</button>
-</div></div>
+<div class="dash-sub" id="homeDate"></div>
+
+<div class="hero-pro">
+  <div class="hero-pro-top"><div><div class="eyebrow">SITUATION DU JOUR</div><div class="hero-pro-title">Mon temps de travail</div></div><button class="hero-play" onclick="tab('jour')">＋</button></div>
+  <div class="hero-time" id="homeTodayTte">00h00</div>
+  <div class="hero-caption" id="homeTodayCaption">Aujourd’hui · aucune journée saisie</div>
+  <div class="hero-chart" id="homeMiniChart"></div>
+</div>
+
+<div class="section-head"><h2>📊 Statistiques</h2><button class="text-action" onclick="tab('mois')">Voir le mois ›</button></div>
+<div class="stat-pair">
+  <div class="stat-card purple"><span>Ø TTE / jour travaillé</span><b id="homeAvg">00h00</b><small id="homeAvgSub">—</small></div>
+  <div class="stat-card gold"><span>Ø amplitude</span><b id="homeAvgAmp">00h00</b><small id="homeWorkSub">0 jour travaillé</small></div>
+</div>
+
+<div class="section-head"><h2>📈 Activité récente</h2><span class="period-pill" id="homePeriod">7 jours</span></div>
+<div class="activity-card">
+  <div class="activity-grid" id="homeActivity"></div>
+</div>
+
+<div class="dash-grid-2">
+  <div class="dash-panel"><div class="panel-title">📅 Quatorzaine <span id="homeAlertCount"></span></div><div id="homeQuat"></div></div>
+  <div class="dash-panel"><div class="panel-title">💶 Paie estimée</div><div id="homePay"></div></div>
+</div>
+
+<div class="dash-panel alerts-panel"><div class="panel-title">⚠️ À surveiller <span id="homeAlertCount2"></span></div><div id="homeAlerts"></div></div>
+
 </section>
 
 

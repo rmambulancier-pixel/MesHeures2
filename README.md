@@ -1,3 +1,6 @@
+
+## V15.3
+MesHeures V15.3 regroupe le dashboard, le calendrier intelligent, la synthèse paie, l’audit renforcé, le rapprochement bulletin, les statistiques historiques et le centre de sauvegarde/restauration. Le moteur de calcul historique reste inchangé.
 # 🚑 MesHeures — Gestion & Suivi Paie Ambulancier
 
 > Application Web Progressive (PWA) dédiée au suivi des temps de travail, au calcul de la paie et au rapprochement des bulletins officiels pour le personnel ambulancier.
