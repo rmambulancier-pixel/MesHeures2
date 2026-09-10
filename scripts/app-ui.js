@@ -159,64 +159,6 @@ Projection à rythme constant : <b>${F(Math.round(projH25))}</b> HS 25% · <b>${
 
 function goMonth(n){const d=dOf(curMonth+'-01');d.setMonth(d.getMonth()+n);curMonth=isoOf(d).slice(0,7);renderMonth()}
 
-function renderMonth(){
-  $('mLbl').textContent=MON[+curMonth.slice(5,7)-1]+' '+curMonth.slice(0,4);
-  let h=['L','M','M','J','V','S','D','Σ'].map(x=>`<div class="h">${x}</div>`).join('');
-  let cur=mono(curMonth+'-01');
-  const G={amp:0,tte:0,trav:0,ir:0,iru:0,idaj:0,dim:0,fer:0};
-  const chartD=[];
-  for(let w=0;w<6;w++){
-    let wa=0,wt=0;
-    for(let i=0;i<7;i++){
-      const k=addD(cur,w*7+i),r=cd(k),out=k.slice(0,7)!==curMonth;
-      const hasErr=r.al.some(a=>a.lvl==='b');
-      if(!out){
-        wa+=r.amp;wt+=r.tte;
-        G.amp+=r.amp;G.tte+=r.tte;G.trav+=r.trav;
-        G.ir+=r.ir;G.iru+=r.iru;G.idaj+=r.idaj;
-        G.dim+=r.dim;G.fer+=r.fer;
-        if(r.tte>0)chartD.push({k,v:r.tte,hs:false});
-      }
-      const ic=[]
-      if(DB.days[k]?.fer)ic.push('☀️');
-      else if(isFerie(k))ic.push('·');
-      if(r.ir+r.iru)ic.push('🍽️');
-      if(r.nuit)ic.push('🌙');
-      if(r.dim&&r.trav)ic.push('🔵');
-      h+=`<div class="cel ${r.t||''} ${out?'off':''} ${k===today()?'now':''} ${hasErr&&!out?'err':''}"
-onclick="curDate='${k}';tab('jour')">
-<div class="d">${+k.slice(8)}</div>
-<div class="v">${r.tte?F(r.tte):(r.t==='RC'?'RC':r.t==='CP'?'CP':r.t==='MAL'?'AM':r.t==='NUIT'?'🌙':'')}</div>
-<div class="ic">${ic.join('')}</div>
-</div>`;
-    }
-    h+=`<div class="rec">${wt?'<span style="font-size:9px">'+F(wa)+'</span><b>'+F(wt)+'</b>':''}</div>`;
-    if(addD(cur,w*7+7).slice(0,7)!==curMonth&&w>=3)break;
-  }
-  $('mCal').innerHTML=h;
-  $('mKpi').innerHTML=[
-    ['Amplitude',F(G.amp)],['TTE',F(G.tte)],['Jours trav.',G.trav],
-    ['Paniers',G.ir+G.iru],['Dimanches',G.dim],['Fériés trav.',G.fer?'oui':'—']
-  ].map(x=>`<div class="kpi"><b>${x[1]}</b><span>${x[0]}</span></div>`).join('');
-  const BARZONE=68; // px disponibles au-dessus du libellé de jour, dans une .chart de 92px
-  const max=Math.max(...chartD.map(x=>x.v),1);
-  $('mChart').innerHTML=chartD.map(x=>{
-    const px=Math.max(2,(x.v/max*BARZONE)).toFixed(1);
-    return `<div class="bar-w"><div class="bv${x.hs?' hs':''}" style="height:${px}px" title="${short(x.k)} ${F(x.v)}"></div><div class="bl">${+x.k.slice(8)}</div></div>`;
-  }).join('');
-  let dimH='';
-  const m=curMonth;
-  for(let i=1;i<=31;i++){
-    const k=m+'-'+pad(i);
-    if(k.slice(0,7)!==m)break;
-    try{dOf(k)}catch(e){break}
-    const r=cd(k);
-    if(r.dim&&r.trav)dimH+=`<div class="al w">🔵 ${shortY(k)} dimanche travaillé${DB.s.dimPrime?' — prime '+EUR(DB.s.dimPrime):''}  · ${F(r.tte)}</div>`;
-    if(r.fer&&DB.days[k]?.t==='T')dimH+=`<div class="al w">☀️ ${shortY(k)} férié travaillé · ${F(r.tte)} · maj. 100% = ${EUR(r.tte/60*DB.s.taux)}</div>`;
-  }
-  $('mDim').innerHTML=dimH||'<span class="mut">Aucun dimanche ni férié travaillé ce mois.</span>';
-}
-
 function goPer(n){
   DB.per.start=addD(DB.per.start,n*14*DB.per.nb);
   save();renderPay();
@@ -232,7 +174,7 @@ function regPer(){
   alert('✅ Période enregistrée dans l\'audit');renderAll();
 }
 
-function renderPay(){
+function renderPayBase(){
   const S=DB.s,st=DB.per.start,nb=DB.per.nb,B=gb(st);
   $('pS').value=st;$('pN').value=nb;
   $('pP25').value=B.p25??'';$('pP50').value=B.p50??'';
@@ -300,7 +242,7 @@ ${sol>S.rcAlerte?`<div class="al b" style="margin-top:6px">🚨 Solde RC > ${S.r
   $('pCmp').innerHTML=c;
 }
 
-function renderAudit(){
+function renderAuditBase(){
   if(!DB.periods.length){
     ['aTab','aKpi','aAnn','aRc'].forEach(id=>$(id).innerHTML='');
     $('aFer').innerHTML=$('aAl').innerHTML='<div class="al i">Aucune période enregistrée.</div>';
@@ -365,7 +307,7 @@ ${rcSol>S.rcAlerte?`<div class="al b" style="margin-top:6px">🚨 Solde RC élev
     :'<div class="al k">✅ Aucune anomalie sur les périodes enregistrées</div>';
 }
 
-function renderReg(){
+function renderRegBase(){
   for(const g in RG)$(g).innerHTML=RG[g].map(([k,l])=>{
     const ty=['anchor','panDeb','panFin','nuitDeb','nuitFin'].includes(k)?
       (k==='anchor'?'date':'time'):'number';
@@ -409,36 +351,3 @@ function copySum(){
   navigator.clipboard.writeText(t).then(()=>alert('✅ Résumé copié !'),()=>prompt('Copie :',t));
 }
 
-/* ═══════════════════════════════════════════════
-   V10 — TABLEAU DE BORD
-═══════════════════════════════════════════════ */
-function renderHome(){
-  const now=today();
-  const m=now.slice(0,7);
-  const yr=+m.slice(0,4),mo=+m.slice(5,7);
-  let month={amp:0,tte:0,trav:0,ir:0,iru:0,idaj:0};
-  const alerts=[];
-  let k=m+'-01';
-  const last=isoOf(new Date(yr,mo,0));
-  while(k<=last){
-    const r=cd(k);month.amp+=r.amp;month.tte+=r.tte;month.trav+=r.trav;month.ir+=r.ir;month.iru+=r.iru;month.idaj+=r.idaj;
-    r.al.forEach(a=>alerts.push({k,...a})); k=addD(k,1);
-  }
-  const diff=nDays(DB.s.anchor,now);
-  const qs=addD(DB.s.anchor,Math.floor(diff/14)*14);
-  const q=calcPer(qs,1).Q[0];
-  const N=DB.s.base*120;
-  const br=brutOf(calcPer(qs,1).G);
-  const pc=Math.min(100,q.seuil/N*100);
-  $('homeDate').textContent='Aujourd’hui · '+shortY(now)+' · '+dow(now).toUpperCase();
-  $('homeKpi').innerHTML=[
-    ['TTE mois',F(month.tte),'ok'],['Jours travaillés',month.trav,'ok'],
-    ['HS 25 %',F(q.h25),'warn'],['HS 50 %',F(q.h50),'bad'],
-    ['Paniers',month.ir+month.iru,''],['IDAJ',C2(month.idaj)+' h','']
-  ].map(x=>`<div class="home-kpi ${x[2]}"><b>${x[1]}</b><span>${x[0]}</span></div>`).join('');
-  $('homeQuat').innerHTML=`<div class="home-value">${F(q.seuil)}</div><div class="home-muted">${short(qs)} → ${short(addD(qs,13))}</div><div class="home-progress"><i style="width:${pc.toFixed(1)}%"></i></div><div class="home-muted">${q.seuil<N?'Marge avant HS : <b>'+F(N-q.seuil)+'</b>':'🔥 Seuil hebdomadaire atteint'}</div>`;
-  $('homePay').innerHTML=`<div class="home-value">${EUR(br.tot)}</div><div class="home-muted">Brut estimé sur la quatorzaine</div><div class="home-list"><div class="home-row"><span>Normal</span><b>${F(q.nor)}</b></div><div class="home-row"><span>HS 25 %</span><b>${F(q.h25)}</b></div><div class="home-row"><span>HS 50 %</span><b>${F(q.h50)}</b></div></div>`;
-  const sorted=alerts.sort((a,b)=>(a.lvl==='b'?0:1)-(b.lvl==='b'?0:1)).slice(0,6);
-  $('homeAlertCount').textContent=alerts.length?alerts.length+' ce mois':'aucune';
-  $('homeAlerts').innerHTML=sorted.length?sorted.map(a=>`<div class="al ${a.lvl}"><b>${shortY(a.k)}</b> — ${esc(a.m)}</div>`).join(''):'<div class="al k">✅ Rien de critique détecté ce mois-ci.</div>';
-}

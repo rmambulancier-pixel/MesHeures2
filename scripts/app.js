@@ -414,33 +414,6 @@ const RX_PZ=/(\d{1,2}:\d{2})-(\d{1,2}:\d{2}) ?\([^)]*\b(ENT|EXT)\b[^)]*\)/g;
 
 
 
-function expo(){
-  DB.exp=new Date().toLocaleDateString('fr-FR');save();
-  const b=new Blob([JSON.stringify(DB,null,1)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(b);
-  a.download='mesheures-'+today()+'.json';a.click();renderReg();
-}
-function impo(i){
-  const f=i.files[0];if(!f)return;
-  const r=new FileReader();
-  r.onload=e=>{
-    try{
-      const j=JSON.parse(e.target.result);
-      if(!j.days)throw new Error('Pas de données journalières');
-      pushUndo('Import JSON');
-      DB={...DB,...j};DB.s={...DEF,...(j.s||{})};
-      DB.periods=j.periods||[];DB.bul=j.bul||{};DB.bulletins=j.bulletins||[];DB.romi=j.romi||{};
-      save();renderAll();alert('✅ Import réussi');
-    }catch(x){alert('Fichier illisible : '+x.message)}
-  };
-  r.readAsText(f);i.value='';
-}
-function wipe(){
-  if(confirm('⚠️ Effacer TOUTES les données ?\nExportez d\'abord vos données !')){
-    localStorage.removeItem(LS);location.reload();
-  }
-}
-
 load();
 curDate=today();curMonth=curDate.slice(0,7);
 if(!Object.keys(DB.days).length){
@@ -460,3 +433,159 @@ document.addEventListener('touchend',e=>{
   else if(curTab==='mois'){dx<0?goMonth(1):goMonth(-1)}
 });
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+
+/* ═══════════════════════════════════════════════
+   V15 — INTELLIGENCE / SÉCURITÉ / MODE PRO
+   Couche additive : ne modifie pas les règles de calcul historiques.
+═══════════════════════════════════════════════ */
+const MH_V='15.3';
+
+function mhMonthStats(ym){
+  const [y,m]=ym.split('-').map(Number), last=isoOf(new Date(y,m,0));
+  const out={amp:0,tte:0,trav:0,ir:0,iru:0,idaj:0,nuit:0,fer:0,dim:0,alerts:[],hard:0,warn:0,days:0};
+  for(let k=ym+'-01';k<=last;k=addD(k,1)){
+    const r=cd(k),d=DB.days[k];
+    if(d)out.days++;
+    out.amp+=r.amp;out.tte+=r.tte;out.trav+=r.trav;out.ir+=r.ir;out.iru+=r.iru;out.idaj+=r.idaj;out.nuit+=r.nuit;out.fer+=r.fer;out.dim+=r.dim;
+    r.al.forEach(a=>{out.alerts.push({k,...a});a.lvl==='b'?out.hard++:out.warn++});
+  }
+  return out;
+}
+function mhYearStats(y){
+  const o={tte:0,trav:0,hs25:0,hs50:0,brut:0,alerts:0};
+  for(let m=1;m<=12;m++){
+    const s=mhMonthStats(y+'-'+pad(m));
+    o.tte+=s.tte;o.trav+=s.trav;o.alerts+=s.alerts.length;
+  }
+  return o;
+}
+function mhOpenDay(k){curDate=k;curMonth=k.slice(0,7);tab('jour')}
+function mhClass(v,good='ok',bad='bad'){return v>0?bad:good}
+
+function renderHome(){
+  const now=today(),m=now.slice(0,7),month=mhMonthStats(m);
+  const diff=nDays(DB.s.anchor,now),qs=addD(DB.s.anchor,Math.floor(diff/14)*14),qData=calcPer(qs,1),q=qData.Q[0],qG=qData.G;
+  const todayData=gd(now)||{t:'REPOS'},todayR=cd(now);
+  const N=DB.s.base*120,pc=N?Math.min(100,q.seuil/N*100):0;
+  $('homeDate').textContent=shortY(now)+' · '+dow(now).toUpperCase()+' · '+MON[+m.slice(5)-1];
+
+  $('homeTodayTte').textContent=F(todayR.tte);
+  $('homeTodayCaption').textContent=todayData.t==='T'?'Journée travaillée · amplitude '+F(todayR.amp):todayData.t==='NUIT'?'Nuit · '+F(todayR.tte):'Aujourd’hui · '+(todayData.t==='CP'?'Congé payé':todayData.t==='RC'?'Repos compensateur':todayData.t==='MAL'?'Maladie':'aucune journée travaillée');
+
+  const days=[];let sum7=0;
+  for(let i=6;i>=0;i--){const k=addD(now,-i),r=cd(k);days.push({k,r});sum7+=r.tte;}
+  const max=Math.max(1,...days.map(x=>x.r.tte));
+  $('homeMiniChart').innerHTML=days.map(x=>{const h=Math.max(8,Math.round(x.r.tte/max*100));const cls=x.k===now?'today':'';return `<div class="mini-day"><i class="${cls}" style="height:${h}%"></i><span>${dOf(x.k).getDate()}</span></div>`}).join('');
+
+  const avg=month.trav?month.tte/month.trav:0, avgAmp=month.trav?month.amp/month.trav:0;
+  $('homeAvg').textContent=F(Math.round(avg));
+  $('homeAvgSub').textContent=month.trav?month.trav+' jour'+(month.trav>1?'s':'')+' travaillé'+(month.trav>1?'s':''):'Aucune journée';
+  $('homeAvgAmp').textContent=F(Math.round(avgAmp));
+  $('homeWorkSub').textContent=month.trav+' jour'+(month.trav>1?'s':'')+' travaillé'+(month.trav>1?'s':'');
+  $('homePeriod').textContent='7 derniers jours · '+F(sum7);
+
+  $('homeActivity').innerHTML=days.map(x=>{
+    const d=dOf(x.k),label=['dim','lun','mar','mer','jeu','ven','sam'][d.getDay()],r=x.r;
+    const state=r.t==='T'?'work':r.t==='NUIT'?'night':r.t==='CP'?'leave':r.t==='RC'?'rest':'empty';
+    return `<button class="activity-day ${state}" onclick="mhOpenDay('${x.k}')"><b>${label}</b><strong>${r.tte?F(r.tte):'—'}</strong><small>${d.getDate()}/${d.getMonth()+1}</small></button>`;
+  }).join('');
+
+  $('homeQuat').innerHTML=`<div class="big-inline"><b>${F(q.seuil)}</b><span>${short(qs)} → ${short(addD(qs,13))}</span></div><div class="dash-progress"><i style="width:${pc.toFixed(1)}%"></i></div><div class="dash-muted">${q.seuil<N?'Marge avant seuil : <b>'+F(N-q.seuil)+'</b>':'🔥 Seuil atteint'}</div>`;
+  const br=brutOf(qG);
+  $('homePay').innerHTML=`<div class="pay-big">${EUR(br.tot)}</div><div class="dash-muted">Brut estimé · quatorzaine courante</div><div class="pay-lines"><div><span>Normal</span><b>${F(q.nor)}</b></div><div><span>HS 25 %</span><b>${F(q.h25)}</b></div><div><span>HS 50 %</span><b>${F(q.h50)}</b></div></div>`;
+
+  const sorted=month.alerts.slice().sort((a,b)=>(a.lvl==='b'?0:1)-(b.lvl==='b'?0:1)).slice(0,5);
+  $('homeAlertCount').textContent=month.alerts.length?month.alerts.length+' alerte'+(month.alerts.length>1?'s':''):'OK';
+  $('homeAlertCount2').textContent=month.alerts.length?month.hard+' critique'+(month.hard>1?'s':'')+' · '+month.warn+' attention'+(month.warn>1?'s':''):'aucune';
+  $('homeAlerts').innerHTML=sorted.length?sorted.map(a=>`<button class="dash-alert ${a.lvl}" onclick="mhOpenDay('${a.k}')"><span>${a.lvl==='b'?'🔴':'🟠'}</span><div><b>${shortY(a.k)}</b><small>${esc(a.m)}</small></div><em>›</em></button>`).join(''):'<div class="dash-ok">✓ Aucun point critique détecté ce mois-ci.</div>';
+}
+
+function renderMonth(){
+  const d=dOf(curMonth+'-01'),y=d.getFullYear(),m=d.getMonth(),first=new Date(y,m,1),days=new Date(y,m+1,0).getDate(),offset=(first.getDay()+6)%7;
+  $('mLbl').textContent=MON[m]+' '+y;
+  let h=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim','Σ'].map(x=>`<div class="h">${x}</div>`).join('');
+  for(let i=0;i<offset;i++)h+='<div class="cel off"></div>';
+  for(let n=1;n<=days;n++){
+    const k=curMonth+'-'+pad(n),d0=gd(k),r=cd(k),err=r.al.some(a=>a.lvl==='b'),a=r.al.length;
+    const val=r.t==='T'||r.t==='NUIT'?F(r.tte):d0.t==='CP'?'CP':d0.t==='RC'?'RC':d0.t==='MAL'?'MAL':'—';
+    h+=`<div class="cel ${d0.t||'REPOS'} ${err?'err':''} ${k===today()?'now':''}" onclick="mhOpenDay('${k}')"><div class="d">${n}</div><div class="v">${val}</div><div class="ic">${a?'⚠️ '+a:(d0.t==='NUIT'?'🌙':d0.t==='CP'?'🏖️':d0.t==='RC'?'↩️':'')}</div></div>`;
+  }
+  const last=new Date(y,m,0); // placeholder for month sum column alignment
+  const weeks=[]; for(let n=1;n<=days;n++){const k=curMonth+'-'+pad(n),r=cd(k),idx=Math.floor((offset+n-1)/7);if(!weeks[idx])weeks[idx]={amp:0,tte:0};weeks[idx].amp+=r.amp;weeks[idx].tte+=r.tte;}
+  Object.values(weeks).forEach(w=>h+=`<div class="rec"><b>${F(w.tte)}</b>${F(w.amp)}</div>`);
+  $('mCal').innerHTML=h;
+  const s=mhMonthStats(curMonth), N=DB.s.base*120;
+  $('mKpi').innerHTML=[['Amplitude',F(s.amp)],['TTE',F(s.tte)],['Jours',s.trav],['HS potentiel',F(Math.max(0,s.tte-N)),'warn'],['Paniers',s.ir+s.iru],['Nuit',C2(s.nuit)+' h'],['Alertes',s.alerts.length,s.hard?'bad':'']].map(x=>`<div class="kpi ${x[2]||''}"><b>${x[1]}</b><span>${x[0]}</span></div>`).join('');
+  const max=480;let chart='';for(let n=1;n<=days;n++){const k=curMonth+'-'+pad(n),r=cd(k),hh=Math.min(100,r.tte/max*100),hs=Math.max(0,r.tte-N);chart+=`<div class="bar-w" title="${shortY(k)} · ${F(r.tte)}"><div class="bv ${hs>0?'hs':''}" style="height:${hh.toFixed(1)}%"></div><div class="bl">${n}</div></div>`}$('mChart').innerHTML=chart;
+  const alerts=s.alerts.slice().sort((a,b)=>(a.lvl==='b'?0:1)-(b.lvl==='b'?0:1));
+  $('mDim').innerHTML=(s.dim?`<div class="al w">🔵 ${s.dim} dimanche(s) travaillé(s)</div>`:'')+(s.fer?`<div class="al w">☀️ ${F(s.fer)} de TTE sur jours fériés</div>`:'')+(alerts.length?alerts.slice(0,12).map(a=>`<div class="al ${a.lvl}" onclick="mhOpenDay('${a.k}')" style="cursor:pointer"><b>${shortY(a.k)}</b> — ${esc(a.m)}</div>`).join(''):'<div class="al k">✅ Aucun point particulier ce mois-ci.</div>');
+}
+
+function renderPay(){
+  renderPayBase();
+  const st=DB.per.start,nb=DB.per.nb,{G}=calcPer(st,nb),{tot}=brutOf(G);
+  const host=$('pKpi'); if(!host)return;
+  const old=host.parentElement;
+  if(old&&!document.getElementById('pProSummary')){
+    const c=document.createElement('div');c.className='card pro-summary';c.id='pProSummary';c.innerHTML=`<h2>💼 Synthèse professionnelle</h2><div class="pro-grid"><div><span>Brut estimé</span><b id="proBrut">${EUR(tot)}</b></div><div><span>Net estimé</span><b id="proNet">${EUR(tot*DB.s.net)}</b></div><div><span>Heures sup.</span><b>${F(G.h25+G.h50)}</b></div><div><span>Écart bulletin</span><b id="proGap">À renseigner</b></div></div>`;old.parentNode.insertBefore(c,old);}
+  const gap=document.getElementById('proGap'),B=gb(st);if(gap)gap.textContent=B.rcAcq==null?'À renseigner':B.rcAcq.toFixed(2)+' h RC';
+}
+
+function renderAudit(){
+  renderAuditBase();
+  const host=$('aKpi');if(!host)return;
+  const periods=DB.periods||[], all=[];periods.forEach(p=>all.push(...calcPer(p.start,p.nb).AL));
+  const hard=all.filter(a=>a.lvl==='b').length,warn=all.filter(a=>a.lvl==='w').length;
+  host.innerHTML=`<div class="audit-strip"><span>🔎 ${periods.length} période(s)</span><span class="${hard?'bad-text':'ok-text'}">🔴 ${hard} critique(s)</span><span class="${warn?'warn-text':'ok-text'}">🟠 ${warn} attention(s)</span><span>🟢 contrôle terminé</span></div>`+host.innerHTML;
+}
+
+/* Export V15 : enveloppe versionnée, import compatible avec les anciens JSON. */
+function expo(){
+  const now=new Date().toISOString();
+  DB.exp=new Date().toLocaleDateString('fr-FR');save();
+  const payload={format:'MesHeures Backup',version:MH_V,exportedAt:now,data:DB};
+  const b=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='mesheures-v15-'+today()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);renderReg();
+}
+function impo(i){
+  const f=i.files[0];if(!f)return;
+  const r=new FileReader();r.onload=e=>{try{
+    const raw=JSON.parse(e.target.result),j=raw.data&&raw.format==='MesHeures Backup'?raw.data:raw;
+    if(!j.days)throw new Error('Pas de données journalières');
+    if(!confirm('Importer cette sauvegarde et remplacer les données actuelles ?\n\nUne exportation de sécurité sera créée avant remplacement.'))return;
+    /* sécurité : copie locale avant remplacement */
+    localStorage.setItem(LS+'_preimport',JSON.stringify(DB));
+    pushUndo('Import JSON V15');
+    DB={...DB,...j};DB.s={...DEF,...(j.s||{})};DB.periods=j.periods||[];DB.bul=j.bul||{};DB.bulletins=j.bulletins||[];DB.romi=j.romi||{};
+    save();renderAll();alert('✅ Import réussi — sauvegarde de sécurité locale créée.');
+  }catch(x){alert('Fichier illisible : '+x.message)}finally{i.value=''}};r.readAsText(f);
+}
+function mhRestorePreImport(){
+  const raw=localStorage.getItem(LS+'_preimport');if(!raw)return alert('Aucune sauvegarde pré-import disponible.');
+  if(!confirm('Restaurer la sauvegarde juste avant le dernier import ?'))return;
+  try{DB=JSON.parse(raw);save();renderAll();alert('✅ Sauvegarde pré-import restaurée.')}catch(e){alert('Restauration impossible : '+e.message)}
+}
+function mhBackupLocal(){
+  localStorage.setItem(LS+'_manual',JSON.stringify(DB));DB.exp=new Date().toLocaleDateString('fr-FR');save();renderReg();alert('✅ Point de restauration local créé.');
+}
+function mhRestoreLocal(){
+  const raw=localStorage.getItem(LS+'_manual');if(!raw)return alert('Aucun point de restauration local.');
+  if(!confirm('Restaurer le dernier point de restauration local ?'))return;
+  try{DB=JSON.parse(raw);save();renderAll();alert('✅ Restauration terminée.')}catch(e){alert('Restauration impossible : '+e.message)}
+}
+function mhTogglePro(){DB.s.proMode=!DB.s.proMode;save();document.body.classList.toggle('pro-mode',!!DB.s.proMode);renderReg();}
+
+/* Compléments de réglages sans modifier le HTML historique. */
+function renderReg(){
+  renderRegBase();
+  const bk=$('rBk');if(!bk)return;
+  if(!document.getElementById('mhSecurity')){
+    const c=document.createElement('div');c.id='mhSecurity';c.className='security-box';c.innerHTML=`<div class="security-title">🛡️ Centre de sauvegarde V15</div><div class="security-actions"><button class="g" onclick="mhBackupLocal()">💾 Point local</button><button class="g" onclick="mhRestoreLocal()">↩️ Restaurer</button><button class="g" onclick="mhRestorePreImport()">🧯 Annuler import</button></div><label class="pro-switch"><input type="checkbox" id="mhProMode" onchange="mhTogglePro()"> Mode professionnel</label>`;bk.parentNode.insertBefore(c,bk.nextSibling);
+  }
+  $('mhProMode').checked=!!DB.s.proMode;
+  document.body.classList.toggle('pro-mode',!!DB.s.proMode);
+}
+
+/* Version et cache */
+if($('mhVersion'))$('mhVersion').textContent='V15.3';
+setTimeout(()=>{try{renderAll()}catch(e){console.error('V15 render',e)}},0);
