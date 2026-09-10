@@ -438,7 +438,7 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catc
    V15 — INTELLIGENCE / SÉCURITÉ / MODE PRO
    Couche additive : ne modifie pas les règles de calcul historiques.
 ═══════════════════════════════════════════════ */
-const MH_V='15.3';
+const MH_V='15.4';
 
 function mhMonthStats(ym){
   const [y,m]=ym.split('-').map(Number), last=isoOf(new Date(y,m,0));
@@ -587,5 +587,5 @@ function renderReg(){
 }
 
 /* Version et cache */
-if($('mhVersion'))$('mhVersion').textContent='V15.3';
+if($('mhVersion'))$('mhVersion').textContent='V15.4';
 setTimeout(()=>{try{renderAll()}catch(e){console.error('V15 render',e)}},0);

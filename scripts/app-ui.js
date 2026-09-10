@@ -244,8 +244,12 @@ ${sol>S.rcAlerte?`<div class="al b" style="margin-top:6px">🚨 Solde RC > ${S.r
 
 function renderAuditBase(){
   if(!DB.periods.length){
-    ['aTab','aKpi','aAnn','aRc'].forEach(id=>$(id).innerHTML='');
-    $('aFer').innerHTML=$('aAl').innerHTML='<div class="al i">Aucune période enregistrée.</div>';
+    $('aKpi').innerHTML='<div class="audit-empty">Aucune période enregistrée pour le moment.</div>';
+    $('aAnn').innerHTML='<tr><td class="mut">Enregistre une période depuis l’écran Paie pour alimenter l’audit.</td></tr>';
+    $('aTab').innerHTML='<tr><td class="mut">Aucune période enregistrée.</td></tr>';
+    $('aRc').innerHTML='<div class="audit-empty">Le solde RC apparaîtra ici après l’enregistrement d’une période.</div>';
+    $('aFer').innerHTML='<div class="al i">Aucun dimanche ou jour férié enregistré dans une période d’audit.</div>';
+    $('aAl').innerHTML='<div class="al k">✅ Aucun contrôle d’audit à signaler.</div>';
     return;
   }
   const S=DB.s;
