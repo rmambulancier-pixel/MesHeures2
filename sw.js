@@ -1,5 +1,5 @@
-const CACHE = 'mesheures-shell-v15';
-const SHELL = ['./', './index.html', './manifest.json', './icon.svg', './style/refonte.css', './scripts/app-core.js', './scripts/app-pwa.js', './scripts/app-ui.js', './scripts/app-parser.js', './scripts/app.js'];
+const CACHE = 'mesheures-shell-v1';
+const SHELL = ['./', './index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));

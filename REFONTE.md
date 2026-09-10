@@ -1,6 +1,3 @@
-
-## V15
-MesHeures V15 regroupe le dashboard, le calendrier intelligent, la synthèse paie, l’audit renforcé, le rapprochement bulletin, les statistiques historiques et le centre de sauvegarde/restauration. Le moteur de calcul historique reste inchangé.
 # MesHeures — refonte technique
 
 Cette version conserve l'interface et les règles de calcul de la base fournie, mais sépare le JavaScript en responsabilités claires.
