@@ -20,6 +20,7 @@ function tab(t){
     $('t-'+x).classList.toggle('on',x===t);
   });
   window.scrollTo(0,0);
+  const mm=$('mhMoreMenu'); if(mm)mm.classList.remove('on');
   renderAll();
 }
 
@@ -380,7 +381,45 @@ function renderReg(){
   $('rBk').innerHTML=DB.exp?'Dernier export : <b>'+DB.exp+'</b>':'<span style="color:var(--warn)">⚠️ Aucune sauvegarde</span>';
 }
 
+function mhToggleMore(){
+  let menu=$('mhMoreMenu');
+  if(!menu) return;
+  menu.classList.toggle('on');
+}
+function ensureMobileMore(){
+  let menu=$('mhMoreMenu');
+  if(!menu){
+    menu=document.createElement('div');menu.id='mhMoreMenu';menu.className='mh-more-menu';
+    menu.innerHTML=`<div class="more-title">Autres sections</div>
+      <button onclick="tab('bul');mhToggleMore()">🧾 <span>Bulletin</span></button>
+      <button onclick="tab('romi');mhToggleMore()">📋 <span>ROMI1</span></button>
+      <button onclick="tab('reg');mhToggleMore()">⚙️ <span>Réglages</span></button>`;
+    document.body.appendChild(menu);
+    document.addEventListener('click',e=>{if(!menu.contains(e.target)&&e.target.id!=='mhMore')menu.classList.remove('on')});
+  }
+  const more=$('mhMore');
+  if(more)more.style.display=curTab==='home'?'none':'';
+}
+
+function ensureMobileNav(){
+  let nav=$('mhBottomNav');
+  if(!nav){
+    nav=document.createElement('nav');
+    nav.id='mhBottomNav';nav.className='mh-bottom-nav';nav.setAttribute('aria-label','Navigation principale');
+    nav.innerHTML=`
+      <button data-tab="home" onclick="tab('home')"><span>⌂</span><b>Accueil</b></button>
+      <button data-tab="jour" onclick="tab('jour')"><span>◷</span><b>Jour</b></button>
+      <button data-tab="mois" onclick="tab('mois')"><span>▦</span><b>Mois</b></button>
+      <button data-tab="paie" onclick="tab('paie')"><span>€</span><b>Paie</b></button>
+      <button data-tab="audit" onclick="tab('audit')"><span>⌁</span><b>Audit</b></button>`;
+    document.body.appendChild(nav);
+  }
+  nav.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===curTab));
+}
+
 function renderAll(){
+  ensureMobileMore();
+  ensureMobileNav();
   renderHome();
   if(curTab==='jour')renderDay();
   if(curTab==='mois')renderMonth();
@@ -413,32 +452,47 @@ function copySum(){
    V10 — TABLEAU DE BORD
 ═══════════════════════════════════════════════ */
 function renderHome(){
-  const now=today();
-  const m=now.slice(0,7);
-  const yr=+m.slice(0,4),mo=+m.slice(5,7);
-  let month={amp:0,tte:0,trav:0,ir:0,iru:0,idaj:0};
-  const alerts=[];
-  let k=m+'-01';
-  const last=isoOf(new Date(yr,mo,0));
-  while(k<=last){
-    const r=cd(k);month.amp+=r.amp;month.tte+=r.tte;month.trav+=r.trav;month.ir+=r.ir;month.iru+=r.iru;month.idaj+=r.idaj;
-    r.al.forEach(a=>alerts.push({k,...a})); k=addD(k,1);
-  }
-  const diff=nDays(DB.s.anchor,now);
-  const qs=addD(DB.s.anchor,Math.floor(diff/14)*14);
-  const q=calcPer(qs,1).Q[0];
-  const N=DB.s.base*120;
-  const br=brutOf(calcPer(qs,1).G);
-  const pc=Math.min(100,q.seuil/N*100);
-  $('homeDate').textContent='Aujourd’hui · '+shortY(now)+' · '+dow(now).toUpperCase();
-  $('homeKpi').innerHTML=[
-    ['TTE mois',F(month.tte),'ok'],['Jours travaillés',month.trav,'ok'],
-    ['HS 25 %',F(q.h25),'warn'],['HS 50 %',F(q.h50),'bad'],
-    ['Paniers',month.ir+month.iru,''],['IDAJ',C2(month.idaj)+' h','']
-  ].map(x=>`<div class="home-kpi ${x[2]}"><b>${x[1]}</b><span>${x[0]}</span></div>`).join('');
-  $('homeQuat').innerHTML=`<div class="home-value">${F(q.seuil)}</div><div class="home-muted">${short(qs)} → ${short(addD(qs,13))}</div><div class="home-progress"><i style="width:${pc.toFixed(1)}%"></i></div><div class="home-muted">${q.seuil<N?'Marge avant HS : <b>'+F(N-q.seuil)+'</b>':'🔥 Seuil hebdomadaire atteint'}</div>`;
-  $('homePay').innerHTML=`<div class="home-value">${EUR(br.tot)}</div><div class="home-muted">Brut estimé sur la quatorzaine</div><div class="home-list"><div class="home-row"><span>Normal</span><b>${F(q.nor)}</b></div><div class="home-row"><span>HS 25 %</span><b>${F(q.h25)}</b></div><div class="home-row"><span>HS 50 %</span><b>${F(q.h50)}</b></div></div>`;
-  const sorted=alerts.sort((a,b)=>(a.lvl==='b'?0:1)-(b.lvl==='b'?0:1)).slice(0,6);
-  $('homeAlertCount').textContent=alerts.length?alerts.length+' ce mois':'aucune';
-  $('homeAlerts').innerHTML=sorted.length?sorted.map(a=>`<div class="al ${a.lvl}"><b>${shortY(a.k)}</b> — ${esc(a.m)}</div>`).join(''):'<div class="al k">✅ Rien de critique détecté ce mois-ci.</div>';
+  const now=today(),m=now.slice(0,7),month=mhMonthStats?mhMonthStats(m):null;
+  const diff=nDays(DB.s.anchor,now),qs=addD(DB.s.anchor,Math.floor(diff/14)*14);
+  const qData=calcPer(qs,1),q=qData.Q[0],qG=qData.G;
+  const todayData=gd(now)||{t:'REPOS'},todayR=cd(now);
+  const N=DB.s.base*120,pc=N?Math.min(100,q.seuil/N*100):0;
+  $('homeDate').textContent=shortY(now)+' · '+dow(now).toUpperCase()+' · '+MON[+m.slice(5)-1];
+  $('homeTodayTte').textContent=F(todayR.tte);
+  $('homeTodayCaption').textContent=todayData.t==='T'
+    ?'Journée travaillée · amplitude '+F(todayR.amp)
+    :todayData.t==='NUIT'?'Nuit · '+F(todayR.tte)
+    :'Aujourd’hui · '+(todayData.t==='CP'?'Congé payé':todayData.t==='RC'?'Repos compensateur':todayData.t==='MAL'?'Maladie':'aucune journée travaillée');
+
+  const days=[];let sum7=0;
+  for(let i=6;i>=0;i--){const k=addD(now,-i),r=cd(k);days.push({k,r});sum7+=r.tte}
+  const max=Math.max(1,...days.map(x=>x.r.tte));
+  $('homeMiniChart').innerHTML=days.map(x=>{
+    const h=x.r.tte?Math.max(10,Math.round(x.r.tte/max*100)):5;
+    const cls=x.k===now?'today':'';
+    return `<div class="mini-day"><i class="${cls}" style="height:${h}%"></i><span>${dOf(x.k).getDate()}</span></div>`;
+  }).join('');
+
+  const avg=month&&month.trav?month.tte/month.trav:0,avgAmp=month&&month.trav?month.amp/month.trav:0;
+  $('homeAvg').textContent=F(Math.round(avg));
+  $('homeAvgSub').textContent=month&&month.trav?month.trav+' jour'+(month.trav>1?'s':'')+' travaillé'+(month.trav>1?'s':''):'Aucune journée';
+  $('homeAvgAmp').textContent=F(Math.round(avgAmp));
+  $('homeWorkSub').textContent=(month?.trav||0)+' jour'+((month?.trav||0)>1?'s':'')+' travaillé'+((month?.trav||0)>1?'s':'');
+  $('homePeriod').textContent='7 derniers jours · '+F(sum7);
+
+  $('homeActivity').innerHTML=days.map(x=>{
+    const d=dOf(x.k),label=['dim','lun','mar','mer','jeu','ven','sam'][d.getDay()],r=x.r;
+    const state=r.t==='T'?'work':r.t==='NUIT'?'night':r.t==='CP'?'leave':r.t==='RC'?'rest':'empty';
+    return `<button class="activity-day ${state}" onclick="mhOpenDay('${x.k}')"><b>${label}</b><strong>${r.tte?F(r.tte):'—'}</strong><small>${d.getDate()}/${d.getMonth()+1}</small></button>`;
+  }).join('');
+
+  $('homeQuat').innerHTML=`<div class="big-inline"><b>${F(q.seuil)}</b><span>${short(qs)} → ${short(addD(qs,13))}</span></div><div class="dash-progress"><i style="width:${pc.toFixed(1)}%"></i></div><div class="dash-muted">${q.seuil<N?'Marge avant HS : <b>'+F(N-q.seuil)+'</b>':'🔥 Seuil atteint'}</div>`;
+  const br=brutOf(qG);
+  $('homePay').innerHTML=`<div class="pay-big">${EUR(br.tot)}</div><div class="dash-muted">Brut estimé · quatorzaine courante</div><div class="pay-lines"><div><span>Normal</span><b>${F(q.nor)}</b></div><div><span>HS 25 %</span><b>${F(q.h25)}</b></div><div><span>HS 50 %</span><b>${F(q.h50)}</b></div></div>`;
+
+  const alerts=(month?.alerts||[]).slice().sort((a,b)=>(a.lvl==='b'?0:1)-(b.lvl==='b'?0:1));
+  const hard=alerts.filter(a=>a.lvl==='b').length,warn=alerts.filter(a=>a.lvl==='w').length;
+  $('homeAlertCount').textContent=alerts.length?alerts.length+' alerte'+(alerts.length>1?'s':''):'OK';
+  $('homeAlertCount2').textContent=alerts.length?hard+' critique'+(hard>1?'s':'')+' · '+warn+' attention'+(warn>1?'s':''):'aucune';
+  $('homeAlerts').innerHTML=alerts.length?alerts.slice(0,5).map(a=>`<button class="dash-alert ${a.lvl}" onclick="mhOpenDay('${a.k}')"><span>${a.lvl==='b'?'🔴':'🟠'}</span><div><b>${shortY(a.k)}</b><small>${esc(a.m)}</small></div><em>›</em></button>`).join(''):'<div class="dash-ok">✓ Aucun point critique détecté ce mois-ci.</div>';
 }
