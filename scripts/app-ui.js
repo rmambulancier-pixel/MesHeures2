@@ -22,6 +22,9 @@ const UI = {
     listeJours: null
 };
 
+// === CONSTANTES ===
+const TAUX_PERSONNALISE = 14.02;
+
 // === INITIALISATION ===
 function initialiserUI() {
     UI.containerPrincipal = document.getElementById('container-principal');
@@ -44,6 +47,16 @@ function initialiserUI() {
     
     if (UI.inputDate) {
         UI.inputDate.valueAsDate = new Date();
+    }
+    
+    // Mettre à jour l'affichage du taux
+    mettreAJourAffichageTaux();
+}
+
+function mettreAJourAffichageTaux() {
+    const footer = document.querySelector('footer p');
+    if (footer) {
+        footer.innerHTML = `MesHeures V2 - <small>Taux : <strong>${TAUX_PERSONNALISE.toFixed(2)} €/h</strong> | Majorations 25%/50%</small>`;
     }
 }
 
@@ -73,7 +86,7 @@ function mettreAJourAffichage() {
         }
         UI.affichageTotalHeures.textContent = formaterHeures(totalMinutes);
         
-        const resultatPaie = paie(jours);
+        const resultatPaie = paie(jours, TAUX_PERSONNALISE);
         UI.affichageBrut.textContent = formaterEuros(resultatPaie.brut);
     }
     
@@ -169,7 +182,7 @@ function lancerAudit() {
 
 function lancerPaie() {
     const jours = gestionDonnees.getJours();
-    const resultat = paie(jours);
+    const resultat = paie(jours, TAUX_PERSONNALISE);
     
     if (resultat.erreur) {
         afficherMessage(resultat.erreur, 'error');
@@ -178,22 +191,28 @@ function lancerPaie() {
     
     const sup = resultat.heuresSupplementaires;
     afficherMessage(
-        `Paie : ${formaterEuros(resultat.brut)} brut\n` +
-        `  • ${resultat.heuresNormales.toFixed(2)}h normales\n` +
+        `Paie (à¹¡14,02 €/h) : ${formaterEuros(resultat.brut)} brut\n` +
+        `  • ${resultat.heuresNormales.toFixed(2)}h normales (${formaterEuros(resultat.details.brutNormal)})\n` +
         `  • ${sup.tranche25.toFixed(2)}h sup à 25% (${formaterEuros(resultat.details.brutSup25)})\n` +
         `  • ${sup.tranche50.toFixed(2)}h sup à 50% (${formaterEuros(resultat.details.brutSup50)})`,
         'success'
     );
     
-    console.log('D étails paie:', resultat);
+    console.log('=== FICHE DE PAIE ===');
+    console.log('Taux horaire : 14,02 €');
+    console.log('Brut total :', formaterEuros(resultat.brut));
+    console.log('\nD étail :');
     console.table({
         'Heures normales': resultat.heuresNormales.toFixed(2) + 'h',
         'Sup 25% (36e-43e)': sup.tranche25.toFixed(2) + 'h',
-        'Sup 50% (44e+)': sup.tranche50.toFixed(2) + 'h',
+        'Sup 50% (44e+)': sup.tranche50.toFixed(2) + 'h'
+    });
+    console.log('\nMontants :');
+    console.table({
         'Brut normal': formaterEuros(resultat.details.brutNormal),
         'Brut sup 25%': formaterEuros(resultat.details.brutSup25),
         'Brut sup 50%': formaterEuros(resultat.details.brutSup50),
-        'BRUT TOTAL': formaterEuros(resultat.brut)
+        'TOTAL': formaterEuros(resultat.brut)
     });
 }
 
@@ -220,6 +239,7 @@ if (typeof module !== 'undefined' && module.exports) {
         initialiserUI,
         afficherMessage,
         mettreAJourAffichage,
-        attacherEcouteurs
+        attacherEcouteurs,
+        TAUX_PERSONNALISE
     };
 }
