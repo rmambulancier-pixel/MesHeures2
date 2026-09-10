@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0d1117">
-<title>MesHeures V15</title>
-<meta name="application-version" content="15.0.0">
+<title>MesHeures V15.1</title>
+<meta name="application-version" content="15.1.0">
 <link rel="manifest" href="./manifest.json">
 <link rel="icon" href="./icon.svg">
 <link rel="stylesheet" href="./style/refonte.css">
@@ -105,7 +105,8 @@ tr.t{background:#1c2128}tr.t td{font-weight:700}
 </head>
 <body>
 <header>
-<h1>🚑 MesHeures <span id="mhVersion" class="mut" style="font-size:9px;font-weight:500">V15</span> <span id="hBadge" style="display:none" class="badge">!</span></h1>
+<h1>🚑 MesHeures <span id="mhVersion" class="mut" style="font-size:9px;font-weight:500">V15.1</span> <span id="hBadge" style="display:none" class="badge">!</span></h1>
+<button id="mhMore" class="g mh-more" onclick="mhToggleMore()" aria-label="Autres sections">⋯</button>
 <div class="tabs">
 <button id="t-home" onclick="tab('home')">Accueil</button>
 <button id="t-jour" class="on" onclick="tab('jour')">Jour</button>
@@ -150,13 +151,6 @@ tr.t{background:#1c2128}tr.t td{font-weight:700}
 
 <div class="dash-panel alerts-panel"><div class="panel-title">⚠️ À surveiller <span id="homeAlertCount2"></span></div><div id="homeAlerts"></div></div>
 
-<div class="dashboard-nav">
-  <button class="active" onclick="tab('home')"><span>⌂</span>Accueil</button>
-  <button onclick="tab('jour')"><span>◷</span>Jour</button>
-  <button onclick="tab('mois')"><span>▦</span>Mois</button>
-  <button onclick="tab('paie')"><span>€</span>Paie</button>
-  <button onclick="tab('audit')"><span>⌁</span>Audit</button>
-</div>
 </section>
 
 
