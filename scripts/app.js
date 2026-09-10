@@ -438,7 +438,7 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catc
    V15 — INTELLIGENCE / SÉCURITÉ / MODE PRO
    Couche additive : ne modifie pas les règles de calcul historiques.
 ═══════════════════════════════════════════════ */
-const MH_V='15.7';
+const MH_V='16.0';
 
 function mhMonthStats(ym){
   const [y,m]=ym.split('-').map(Number), last=isoOf(new Date(y,m,0));
@@ -468,6 +468,7 @@ function renderHome(){
   const todayData=gd(now)||{t:'REPOS'},todayR=cd(now);
   const N=DB.s.base*120,pc=N?Math.min(100,q.seuil/N*100):0;
   $('homeDate').textContent=shortY(now)+' · '+dow(now).toUpperCase()+' · '+MON[+m.slice(5)-1];
+  const hs=$('homeSmart'); if(hs){ const nextKeys=Object.keys(DB.days).filter(k=>k>now && ['T','NUIT'].includes(DB.days[k]?.t)).sort(); const next=nextKeys[0]; const last=Object.keys(DB.days).filter(k=>k<now && ['T','NUIT'].includes(DB.days[k]?.t)).sort().pop(); const todayTxt=todayData.t==='T'?'🟢 Journée travaillée':todayData.t==='NUIT'?'🌙 Nuit':todayData.t==='CP'?'🏖️ Congé payé':todayData.t==='RC'?'🔵 Repos compensateur':todayData.t==='MAL'?'🔴 Maladie':'⚪ Repos aujourd’hui'; hs.innerHTML=`<div><span class="smart-kicker">AUJOURD’HUI</span><b>${todayTxt}</b><small>${next?'Prochaine journée : '+shortY(next):'Aucune prochaine journée saisie'}</small></div>${last?`<button class="g" onclick="mhOpenDay('${last}')">Dernière journée ›</button>`:''}`; }
 
   $('homeTodayTte').textContent=F(todayR.tte);
   $('homeTodayCaption').textContent=todayData.t==='T'?'Journée travaillée · amplitude '+F(todayR.amp):todayData.t==='NUIT'?'Nuit · '+F(todayR.tte):'Aujourd’hui · '+(todayData.t==='CP'?'Congé payé':todayData.t==='RC'?'Repos compensateur':todayData.t==='MAL'?'Maladie':'aucune journée travaillée');
@@ -599,7 +600,7 @@ function renderAudit(){
   const periods=DB.periods||[], seen=new Set(), all=[];periods.forEach(p=>{const pk=p.start+'|'+p.nb;if(seen.has(pk))return;seen.add(pk);all.push(...calcPer(p.start,p.nb).AL)});
   const unique=[];const ua=new Set();all.forEach(a=>{const k=a.k+'|'+a.lvl+'|'+a.m;if(!ua.has(k)){ua.add(k);unique.push(a)}});
   const hard=unique.filter(a=>a.lvl==='b').length,warn=unique.filter(a=>a.lvl==='w').length;
-  host.innerHTML=`<div class="audit-strip"><span>🔎 ${seen.size} période(s)</span><span class="${hard?'bad-text':'ok-text'}">🔴 ${hard} critique(s)</span><span class="${warn?'warn-text':'ok-text'}">🟠 ${warn} attention(s)</span><span>🟢 contrôle terminé</span></div>`+host.innerHTML;
+  const total=hard*4+warn; const score=Math.max(0,Math.min(100,100-total*5)); host.innerHTML=`<div class="audit-health"><div><span>ÉTAT DU MOIS</span><b>${score}/100</b></div><strong>${score>=90?'🟢 Planning cohérent':score>=70?'🟠 Points à vérifier':'🔴 Contrôle nécessaire'}</strong><small>${unique.length?unique.length+' point(s) détecté(s)':'Aucune anomalie détectée'}</small></div><div class="audit-strip"><span>🔎 ${seen.size} période(s)</span><span class="${hard?'bad-text':'ok-text'}">🔴 ${hard} critique(s)</span><span class="${warn?'warn-text':'ok-text'}">🟠 ${warn} attention(s)</span><span>🟢 contrôle terminé</span></div>`+host.innerHTML;
 }
 
 /* Export V15 : enveloppe versionnée, import compatible avec les anciens JSON. */
@@ -608,7 +609,7 @@ function expo(){
   DB.exp=new Date().toLocaleDateString('fr-FR');save();
   const payload={format:'MesHeures Backup',version:MH_V,exportedAt:now,data:DB};
   const b=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='mesheures-v15-'+today()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);renderReg();
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='mesheures-v16-'+today()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);renderReg();
 }
 function impo(i){
   const f=i.files[0];if(!f)return;
@@ -643,10 +644,11 @@ function renderReg(){
   renderRegBase();
   const bk=$('rBk');if(!bk)return;
   if(!document.getElementById('mhSecurity')){
-    const c=document.createElement('div');c.id='mhSecurity';c.className='security-box';c.innerHTML=`<div class="security-title">🛡️ Centre de sauvegarde V15</div><div class="security-actions"><button class="g" onclick="mhBackupLocal()">💾 Point local</button><button class="g" onclick="mhRestoreLocal()">↩️ Restaurer</button><button class="g" onclick="mhRestorePreImport()">🧯 Annuler import</button></div><label class="pro-switch"><input type="checkbox" id="mhProMode" onchange="mhTogglePro()"> Mode professionnel</label>`;bk.parentNode.insertBefore(c,bk.nextSibling);
+    const c=document.createElement('div');c.id='mhSecurity';c.className='security-box';c.innerHTML=`<div class="security-title">🛡️ Centre de sauvegarde V16</div><div class="security-actions"><button class="g" onclick="mhBackupLocal()">💾 Point local</button><button class="g" onclick="mhRestoreLocal()">↩️ Restaurer</button><button class="g" onclick="mhRestorePreImport()">🧯 Annuler import</button></div><label class="pro-switch"><input type="checkbox" id="mhProMode" onchange="mhTogglePro()"> Mode professionnel</label>`;bk.parentNode.insertBefore(c,bk.nextSibling);
   }
   $('mhProMode').checked=!!DB.s.proMode;
   document.body.classList.toggle('pro-mode',!!DB.s.proMode);
+  if(typeof mhRenderPlugins==='function')mhRenderPlugins();
 }
 
 /* Version et cache */
@@ -670,6 +672,6 @@ function mhDecoratePages(){
   });
 }
 
-if($('mhVersion'))$('mhVersion').textContent='V15.6';
+if($('mhVersion'))$('mhVersion').textContent='V16.0';
 mhDecoratePages();
 setTimeout(()=>{try{renderAll()}catch(e){console.error('V15 render',e)}},0);
