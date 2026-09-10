@@ -27,6 +27,37 @@ function goDay(n){curDate=addD(curDate,n);renderDay()}
 
 function goToday(){curDate=today();curMonth=curDate.slice(0,7);renderDay();window.scrollTo(0,0)}
 
+let mhDayMenuKey=null,mhLongTimer=null,mhLongTriggered=false;
+function openDayMenu(k){
+  mhDayMenuKey=k; curDate=k; curMonth=k.slice(0,7);
+  const d=gd(k),r=cd(k);
+  $('dayMenuTitle').textContent=shortY(k)+' · '+(d.t==='T'?'Travail':d.t==='NUIT'?'Nuit':d.t==='CP'?'Congé':d.t==='RC'?'RC':d.t==='MAL'?'Maladie':'Repos');
+  $('dayMenuSummary').innerHTML=r.tte?`<b>${F(r.tte)} TTE</b> · ${F(r.amp)} amplitude${r.al.length?` · ⚠️ ${r.al.length} alerte(s)`:''}`:'Aucune heure saisie';
+  $('dayDupTarget').value=addD(k,1);
+  $('dayMenuModal').classList.add('on');
+}
+function dayMenuAction(action){
+  const k=mhDayMenuKey; if(!k)return;
+  if(action==='edit'){closeModal('dayMenuModal');mhOpenDay(k);return;}
+  if(action==='detail'){closeModal('dayMenuModal');curDate=k;tab('jour');return;}
+  if(action==='clear'){closeModal('dayMenuModal');curDate=k;clearDay();return;}
+  if(action==='duplicate'){
+    const target=$('dayDupTarget').value; if(!target)return alert('Choisis une date de destination.');
+    if(target===k)return alert('La destination doit être différente.');
+    const src=DB.days[k]; if(!src)return alert('Cette journée est vide.');
+    if(DB.days[target] && DB.days[target].t!=='REPOS' && !confirm('La journée de destination contient déjà des données. Écraser ?'))return;
+    pushUndo('Duplication '+short(k)+' → '+short(target));
+    DB.days[target]=JSON.parse(JSON.stringify(src)); save(); closeModal('dayMenuModal'); curDate=target;curMonth=target.slice(0,7);tab('jour');
+  }
+}
+function bindMonthLongPress(){
+  const host=$('mCal'); if(!host||host.dataset.longpressBound)return; host.dataset.longpressBound='1';
+  host.addEventListener('pointerdown',e=>{const b=e.target.closest('button.cel');if(!b)return;const m=b.getAttribute('onclick')?.match(/mhOpenDay\('([^']+)'\)/);if(!m)return;mhLongTriggered=false;mhLongTimer=setTimeout(()=>{mhLongTriggered=true;openDayMenu(m[1])},520)});
+  ['pointerup','pointercancel','pointerleave'].forEach(ev=>host.addEventListener(ev,()=>clearTimeout(mhLongTimer)));
+  host.addEventListener('click',e=>{if(!mhLongTriggered)return;mhLongTriggered=false;e.preventDefault();e.stopPropagation()},{capture:true});
+}
+
+
 function setD(f,v){
   const d=gd(curDate);
   if(f==='t'&&d.t!==v)pushUndo('Changement type '+d.t+'→'+v+' le '+short(curDate));
