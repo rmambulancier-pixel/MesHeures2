@@ -1,13 +1,18 @@
 // app-parser.js - Version corrigé·»e
 // Parsing des fichiers d'heures et calculs
+// CONFORME ACCORD CADRE TRANSPORT SANITAIRE (IDCC 16)
+
+// === CONSTANTES ACCORD CADRE ===
+const MAJORATION_SUP_25 = 0.25;  // 36e à 43e heure
+const MAJORATION_SUP_50 = 0.50;  // 44e heure et +
+const SEUIL_HEBDO = 35 * 60;     // 35 heures en minutes
+const SEUIL_8_HEURES_SUP = 8 * 60; // 8 premières heures sup (36-43e)
 
 // === PARSING ===
 function parserLigneHeures(ligne) {
-    // Format attendu : "Date | Début | Fin | Pause | Notes"
     if (!ligne || ligne.trim() === '') return null;
     
     const parties = ligne.split('|').map(p => p.trim());
-    
     if (parties.length < 4) return null;
     
     const [date, debut, fin, pause, notes = ''] = parties;
@@ -24,19 +29,16 @@ function parserLigneHeures(ligne) {
 function parserDate(chaine) {
     if (!chaine) return null;
     
-    // DD/MM/YYYY
     let match = chaine.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
     if (match) {
         return new Date(`${match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`);
     }
     
-    // YYYY-MM-DD
     match = chaine.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
     if (match) {
         return new Date(chaine);
     }
     
-    // DD-MM-YYYY
     match = chaine.match(/(\d{1,2})-(\d{1,2})-(\d{4})/);
     if (match) {
         return new Date(`${match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`);
@@ -66,29 +68,13 @@ function calculerHeuresTravaillees(jour) {
     return travaille;
 }
 
-function calculerHeuresSupplementaires(jour, seuilJournee = 7 * 60) {
-    const travaille = calculerHeuresTravaillees(jour);
-    const sup = Math.max(0, travaille - seuilJournee);
-    return sup;
-}
-
-function calculerTotalHeures(jours) {
+function calculerTotalHeuresSemaine(jours) {
+    // Somme des heures sur 7 jours glissants
     let total = 0;
-    let totalSup = 0;
-    
     for (const jour of jours) {
-        const travaille = calculerHeuresTravaillees(jour);
-        const sup = calculerHeuresSupplementaires(jour);
-        
-        total += travaille;
-        totalSup += sup;
+        total += calculerHeuresTravaillees(jour);
     }
-    
-    return {
-        total: total,
-        supplementaires: totalSup,
-        normales: total - totalSup
-    };
+    return total;
 }
 
 // === AUDIT ===
@@ -102,32 +88,35 @@ function audit(jours) {
         };
     }
     
-    const stats = calculerTotalHeures(jours);
+    let totalMinutes = 0;
     const details = [];
     
     for (const jour of jours) {
         const travaille = calculerHeuresTravaillees(jour);
-        const sup = calculerHeuresSupplementaires(jour);
+        totalMinutes += travaille;
         
         details.push({
             date: jour.date ? jour.date.toLocaleDateString('fr-FR') : 'Inconnue',
             heuresTravaillees: travaille,
-            heuresSupplementaires: sup,
             notes: jour.notes || ''
         });
     }
     
+    const totalHeures = totalMinutes / 60;
+    
     return {
-        totalHeures: stats.total,
+        totalHeures: totalMinutes,
         totalJours: jours.length,
-        heuresNormales: stats.normales,
-        heuresSupplementaires: stats.supplementaires,
+        heuresDecimales: totalHeures,
         details: details
     };
 }
 
-// === PAIE ===
-function paie(jours, tauxHoraire = 11.50, majorationSup = 0.25) {
+// === PAIE - CONFORME ACCORD CADRE ===
+function paie(jours, tauxHoraire = 12.10) {
+    // Taux par défaut : Auxiliaire 2025 (12.10€/h)
+    // Niveaux 2025 : Auxiliaire 12.10€, Ambulancier 12.75€, Ambulancier 13.40€
+    
     if (!jours || jours.length === 0) {
         return {
             erreur: 'Aucune donnéé·»e pour le calcul de paie',
@@ -136,24 +125,47 @@ function paie(jours, tauxHoraire = 11.50, majorationSup = 0.25) {
         };
     }
     
-    const stats = calculerTotalHeures(jours);
+    // Calcul du total hebdomadaire
+    let totalMinutes = 0;
+    for (const jour of jours) {
+        totalMinutes += calculerHeuresTravaillees(jour);
+    }
     
-    const heuresNormalesDec = stats.normales / 60;
-    const heuresSupDec = stats.supplementaires / 60;
+    const totalHeures = totalMinutes / 60;
     
-    const brutNormal = heuresNormalesDec * tauxHoraire;
-    const brutSup = heuresSupDec * tauxHoraire * (1 + majorationSup);
-    const brutTotal = brutNormal + brutSup;
+    // Heures normales (35h)
+    const heuresNormales = Math.min(totalHeures, 35);
+    
+    // Heures supplémentaires
+    const heuresSupTotal = Math.max(0, totalHeures - 35);
+    
+    // Répartition 25% / 50% selon accord cadre
+    const heuresSup25 = Math.min(heuresSupTotal, 8);  // 36e à 43e heure
+    const heuresSup50 = Math.max(0, heuresSupTotal - 8);  // 44e heure et +
+    
+    // Calcul du brut
+    const brutNormal = heuresNormales * tauxHoraire;
+    const brutSup25 = heuresSup25 * tauxHoraire * (1 + MAJORATION_SUP_25);
+    const brutSup50 = heuresSup50 * tauxHoraire * (1 + MAJORATION_SUP_50);
+    const brutTotal = brutNormal + brutSup25 + brutSup50;
     
     return {
         brut: brutTotal,
-        heuresNormales: heuresNormalesDec,
-        heuresSupplementaires: heuresSupDec,
+        heuresNormales: heuresNormales,
+        heuresSupplementaires: {
+            total: heuresSupTotal,
+            tranche25: heuresSup25,
+            tranche50: heuresSup50
+        },
         tauxHoraire: tauxHoraire,
-        majorationSup: majorationSup,
         details: {
             brutNormal: brutNormal,
-            brutSup: brutSup
+            brutSup25: brutSup25,
+            brutSup50: brutSup50,
+            majorations: {
+                tranche25: '25% (36e-43e heure)',
+                tranche50: '50% (44e heure+)'
+            }
         }
     };
 }
@@ -165,9 +177,11 @@ if (typeof module !== 'undefined' && module.exports) {
         parserDate,
         parserFichierTexte,
         calculerHeuresTravaillees,
-        calculerHeuresSupplementaires,
-        calculerTotalHeures,
+        calculerTotalHeuresSemaine,
         audit,
-        paie
+        paie,
+        MAJORATION_SUP_25,
+        MAJORATION_SUP_50,
+        SEUIL_HEBDO
     };
 }
