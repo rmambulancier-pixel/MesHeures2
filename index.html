@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0d1117">
-<title>MesHeures V15.6</title>
+<title>MesHeures V15.7</title>
 <meta name="application-version" content="15.6.0">
 <link rel="manifest" href="./manifest.json">
 <link rel="icon" href="./icon.svg">
-<link rel="stylesheet" href="./style/refonte.css?v=15.6">
+<link rel="stylesheet" href="./style/refonte.css?v=15.7">
 <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -109,7 +109,7 @@ tr.t{background:#1c2128}tr.t td{font-weight:700}
 </head>
 <body>
 <header>
-<h1>🚑 MesHeures <span id="mhVersion" class="mut" style="font-size:9px;font-weight:500">V15.6</span> <span id="hBadge" style="display:none" class="badge">!</span></h1>
+<h1>🚑 MesHeures <span id="mhVersion" class="mut" style="font-size:9px;font-weight:500">V15.7</span> <span id="hBadge" style="display:none" class="badge">!</span></h1>
 <div class="tabs">
 <button id="t-home" onclick="tab('home')">Accueil</button>
 <button id="t-jour" class="on" onclick="tab('jour')">Jour</button>
@@ -186,8 +186,16 @@ tr.t{background:#1c2128}tr.t td{font-weight:700}
 <div class="lbl" id="mLbl"></div>
 <button class="g" onclick="goMonth(1)">›</button>
 </div>
-<div class="card"><div class="cal" id="mCal"></div>
-<div class="mut" style="margin-top:9px">Touche un jour pour le modifier · colonne Σ : amplitude / TTE</div></div>
+<div class="month-toolbar card">
+  <div class="month-toolbar-top"><div><span class="month-mini-label">SUIVI DU MOIS</span><strong id="mSummaryLine">—</strong></div><button class="g month-today" onclick="goTodayMonth()">Aujourd'hui</button></div>
+  <div class="month-modes" role="tablist" aria-label="Affichage du mois">
+    <button id="mModeCal" class="on" onclick="setMonthMode('calendar')">▦ Calendrier</button>
+    <button id="mModePlan" onclick="setMonthMode('planning')">☰ Planning</button>
+  </div>
+</div>
+<div class="card month-calendar-card"><div class="month-legend"><span><i class="lg-work"></i>Travail</span><span><i class="lg-leave"></i>CP</span><span><i class="lg-rest"></i>RC</span><span><i class="lg-alert"></i>Alerte</span></div><div class="cal" id="mCal"></div>
+<div class="mut month-help">Touchez une journée pour l'ouvrir · les totaux sont regroupés par semaine</div></div>
+<div class="card month-selected" id="mSelected"></div>
 <div class="card"><h2>Total du mois</h2><div class="kpis" id="mKpi"></div></div>
 <div class="card"><h2>Graphique TTE journalier</h2><div class="chart" id="mChart"></div></div>
 <div class="card"><h2>Dimanches & fériés travaillés</h2><div id="mDim"></div></div>
